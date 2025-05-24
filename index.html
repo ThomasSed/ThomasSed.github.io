@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Pollen</title>
+</head>
+
+<body>
+    <h1>Indice de pollen</h1>
+    <div id="result">Chargement...</div>
+    <script>
+        fetch("https://<url-lambda>?token=xxx")
+            .then(r => r.json())
+            .then(data => document.getElementById("result").innerText = JSON.stringify(data, null, 2));
+    </script>
+</body>
+
+</html>
