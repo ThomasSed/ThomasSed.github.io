@@ -9,7 +9,7 @@
     <h1>Indice de pollen</h1>
     <div id="result">Chargement...</div>
     <script>
-        fetch("https://h987gq9iyg.execute-api.eu-north-1.amazonaws.com/pollen-etape")
+        fetch("https://h987gq9iyg.execute-api.eu-north-1.amazonaws.com/pollen-etape/get-pollen")
             .then(r => r.json())
             .then(data => document.getElementById("result").innerText = JSON.stringify(data, null, 2));
     </script>
