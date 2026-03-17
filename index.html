@@ -3,15 +3,180 @@
 
 <head>
     <title>Pollen</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            margin: 0;
+            padding: 2rem;
+            background: #f5f5f7;
+            color: #111827;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        #container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: #ffffff;
+            border-radius: 1rem;
+            box-shadow: 0 10px 30px rgba(15, 23, 42, 0.12);
+            padding: 1.5rem;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .city-card {
+            border-radius: 0.75rem;
+            border: 1px solid #e5e7eb;
+            padding: 1rem 1.25rem;
+            background: #f9fafb;
+        }
+
+        .city-title {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-bottom: 0.75rem;
+            font-weight: 600;
+        }
+
+        .city-subtitle {
+            font-size: 0.85rem;
+            color: #6b7280;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+
+        th,
+        td {
+            padding: 0.4rem 0.25rem;
+            text-align: left;
+        }
+
+        th {
+            font-weight: 600;
+            color: #4b5563;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        tr:nth-child(even) td {
+            background: #f3f4f6;
+        }
+
+        .level {
+            font-weight: 600;
+        }
+
+        .level-1 {
+            color: #22c55e;
+        }
+
+        .level-2 {
+            color: #eab308;
+        }
+
+        .level-3 {
+            color: #ef4444;
+        }
+
+        #error {
+            color: #b91c1c;
+            text-align: center;
+            margin-top: 1rem;
+            font-size: 0.9rem;
+        }
+    </style>
 </head>
 
 <body>
-    <h1>Indice de pollen</h1>
-    <div id="result">Chargement...</div>
+    <div id="container">
+        <h1>Indice de pollen</h1>
+        <div id="result">Chargement...</div>
+        <div id="error"></div>
+    </div>
     <script>
+        const levelClass = (value) => {
+            if (value === 1) return "level level-1";
+            if (value === 2) return "level level-2";
+            if (value === 3) return "level level-3";
+            return "level";
+        };
+
+        const createCityHtml = (title, todayKey, tomorrowKey, data) => {
+            const today = data[todayKey] || {};
+            const tomorrow = data[tomorrowKey] || {};
+
+            const allergenKeys = Object.keys(today).filter(k => k !== "qualité globale");
+
+            const formatLabel = (label) => label.charAt(0).toUpperCase() + label.slice(1);
+
+            const getValue = (obj, key) => obj[key] ?? "-";
+
+            return `
+                <div class="city-card">
+                    <div class="city-title">
+                        <span>${title}</span>
+                        <span class="city-subtitle">
+                            Qualité globale aujourd'hui:
+                            <span class="${levelClass(today["qualité globale"])}">${getValue(today, "qualité globale")}</span>
+                        </span>
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Allergène</th>
+                                <th>Aujourd'hui</th>
+                                <th>Demain</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${allergenKeys.map(key => `
+                                <tr>
+                                    <td>${formatLabel(key)}</td>
+                                    <td><span class="${levelClass(today[key])}">${getValue(today, key)}</span></td>
+                                    <td><span class="${levelClass(tomorrow[key])}">${getValue(tomorrow, key)}</span></td>
+                                </tr>
+                            `).join("")}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        };
+
         fetch("https://h987gq9iyg.execute-api.eu-north-1.amazonaws.com/pollen-etape/get-pollen")
-            .then(r => r.json())
-            .then(data => document.getElementById("result").innerText = JSON.stringify(data, null, 2));
+            .then(r => {
+                if (!r.ok) {
+                    throw new Error("Erreur lors du chargement des données (" + r.status + ")");
+                }
+                return r.json();
+            })
+            .then(data => {
+                const result = document.getElementById("result");
+
+                const html = `
+                    <div class="grid">
+                        ${createCityHtml("Nantes", "date_du_jour_nantes", "date_du_lendemain_nantes", data)}
+                        ${createCityHtml("Paris", "date_du_jour_paris", "date_du_lendemain_paris", data)}
+                    </div>
+                `;
+
+                result.innerHTML = html;
+            })
+            .catch(err => {
+                document.getElementById("result").innerText = "Impossible de charger les données.";
+                document.getElementById("error").innerText = err.message;
+            });
     </script>
 </body>
 

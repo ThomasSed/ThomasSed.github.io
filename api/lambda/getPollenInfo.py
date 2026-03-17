@@ -72,18 +72,22 @@ def extract_pollen_info(pollen_data):
     return pollen_info
 def lambda_handler(event, context):
 
+
     pollenDataToday = get_pollen_data(date_du_jour)
     pollenDataTomorrow = get_pollen_data(date_du_lendemain)
-
     pollen_info_today = extract_pollen_info(pollenDataToday)
     pollen_info_tomorrow = extract_pollen_info(pollenDataTomorrow)
 
+    parisPollenDataToday = get_pollen_data(date_du_jour)
+    parisPollenDataTomorrow = get_pollen_data(date_du_lendemain)
+    paris_pollen_info_today = extract_pollen_info(parisPollenDataToday)
+    paris_pollen_info_tomorrow = extract_pollen_info(parisPollenDataTomorrow)
+
     response_body = {
-        "ville": "Nantes",
-        "pollens": {
-            "aujourd_hui": pollen_info_today,
-            "demain": pollen_info_tomorrow
-        }
+        "date_du_jour_nantes": pollen_info_today,
+        "date_du_lendemain_nantes": pollen_info_tomorrow,
+        "date_du_jour_paris": paris_pollen_info_today,
+        "date_du_lendemain_paris": paris_pollen_info_tomorrow,
     }
 
     return {
