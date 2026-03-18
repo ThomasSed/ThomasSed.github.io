@@ -1,146 +1,248 @@
 <!DOCTYPE html>
-<html>
+<html lang="fr">
 
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Pollen</title>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Roboto:wght@400;500&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200');
+
         body {
-            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            font-family: 'Roboto', Arial, sans-serif;
             margin: 0;
-            padding: 2rem;
-            background: #f5f5f7;
-            color: #111827;
+            padding: 0;
+            background: #f8f9fa;
+            color: #202124;
+            -webkit-font-smoothing: antialiased;
         }
 
-        h1 {
-            text-align: center;
-            margin-bottom: 2rem;
+        .header {
+            background: #ffffff;
+            padding: 16px 24px;
+            border-bottom: 1px solid #dadce0;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .header h1 {
+            font-family: 'Google Sans', sans-serif;
+            font-size: 22px;
+            font-weight: 500;
+            margin: 0;
+            color: #202124;
+        }
+
+        .header .material-symbols-outlined {
+            color: #34A853;
+            font-size: 28px;
         }
 
         #container {
-            max-width: 900px;
-            margin: 0 auto;
-            background: #ffffff;
-            border-radius: 1rem;
-            box-shadow: 0 10px 30px rgba(15, 23, 42, 0.12);
-            padding: 1.5rem;
+            max-width: 800px;
+            margin: 24px auto;
+            padding: 0 16px;
         }
 
         .grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-            gap: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
         }
 
         .city-card {
-            border-radius: 0.75rem;
-            border: 1px solid #e5e7eb;
-            padding: 1rem 1.25rem;
-            background: #f9fafb;
-            overflow-x: auto;
+            background: #ffffff;
+            border: 1px solid #dadce0;
+            border-radius: 8px;
+            overflow: hidden;
+            transition: box-shadow 0.2s ease-in-out;
         }
 
-        .city-title {
+        .city-card:hover {
+            box-shadow: 0 1px 2px 0 rgba(60,64,67,0.3), 0 1px 3px 1px rgba(60,64,67,0.15);
+        }
+
+        .city-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid #f1f3f4;
             display: flex;
             justify-content: space-between;
-            align-items: baseline;
-            margin-bottom: 0.75rem;
-            font-weight: 600;
+            align-items: center;
         }
 
-        .city-subtitle {
-            font-size: 0.85rem;
-            color: #6b7280;
+        .city-title-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .city-title-group .material-symbols-outlined {
+            color: #1a73e8;
+        }
+
+        .city-name {
+            font-family: 'Google Sans', sans-serif;
+            font-size: 20px;
+            font-weight: 500;
+        }
+
+        .global-quality {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            font-size: 13px;
+            color: #5f6368;
+        }
+
+        .table-container {
+            padding: 0;
+            overflow-x: auto;
         }
 
         table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 0.9rem;
+            font-size: 14px;
         }
 
-        th,
-        td {
-            padding: 0.4rem 0.25rem;
+        th, td {
+            padding: 14px 20px;
             text-align: left;
+            border-bottom: 1px solid #f1f3f4;
         }
 
         th {
-            font-weight: 600;
-            color: #4b5563;
-            border-bottom: 1px solid #e5e7eb;
+            font-weight: 500;
+            color: #5f6368;
+            background: #f8f9fa;
         }
 
-        tr:nth-child(even) td {
-            background: #f3f4f6;
+        tr:last-child td {
+            border-bottom: none;
         }
 
-        .level {
-            font-weight: 600;
+        .allergen-name {
+            font-weight: 500;
+            color: #3c4043;
+        }
+
+        .level-chip {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: 500;
+            min-width: 24px;
         }
 
         .level-1 {
-            color: #22c55e;
+            background-color: #e6f4ea;
+            color: #137333;
         }
 
         .level-2 {
-            color: #eab308;
+            background-color: #fef7e0;
+            color: #b06000;
         }
 
         .level-3 {
-            color: #ef4444;
+            background-color: #fce8e6;
+            color: #c5221f;
+        }
+
+        .level-unknown {
+            background-color: #f1f3f4;
+            color: #5f6368;
+        }
+
+        .empty-dash {
+            color: #bdc1c6;
+            padding-left: 12px;
+        }
+
+        #result {
+            margin-top: 8px;
+        }
+
+        .loading-state {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            color: #5f6368;
+            padding: 40px;
+            font-size: 16px;
+        }
+
+        .loading-state .material-symbols-outlined {
+            animation: spin 2s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
 
         #error {
-            color: #b91c1c;
-            text-align: center;
-            margin-top: 1rem;
-            font-size: 0.9rem;
+            background: #fce8e6;
+            color: #c5221f;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-top: 16px;
+            font-size: 14px;
+            display: none;
+            border: 1px solid #fad2cf;
         }
 
-        @media (max-width: 640px) {
-            body {
-                padding: 1rem;
-            }
-
-            #container {
-                border-radius: 0;
-                box-shadow: none;
-                padding: 1rem;
-            }
-
-            h1 {
-                font-size: 1.5rem;
-                margin-bottom: 1.25rem;
-            }
-
-            table {
-                font-size: 0.85rem;
-            }
-
-            .city-title {
+        @media (max-width: 600px) {
+            .city-header {
                 flex-direction: column;
                 align-items: flex-start;
-                gap: 0.25rem;
+                gap: 12px;
+            }
+            .global-quality {
+                align-items: flex-start;
+            }
+            th, td {
+                padding: 12px 16px;
+            }
+            .header {
+                padding: 12px 16px;
             }
         }
     </style>
 </head>
 
 <body>
-    <div id="container">
+    <div class="header">
+        <span class="material-symbols-outlined">filter_vintage</span>
         <h1>Indice de pollen</h1>
-        <div id="result">Chargement...</div>
+    </div>
+    <div id="container">
+        <div id="result">
+            <div class="loading-state">
+                <span class="material-symbols-outlined">sync</span>
+                <span>Chargement des données...</span>
+            </div>
+        </div>
         <div id="error"></div>
     </div>
     <script>
         const levelClass = (value) => {
-            if (value >= 4) return "level level-3";
-            if (value >= 2) return "level level-2";
-            if (value <= 1) return "level level-1";
-            return "level";
+            if (value === undefined || value === null || value === "-") return "level-chip level-unknown";
+            const num = parseInt(value, 10);
+            if (isNaN(num)) return "level-chip level-unknown";
+            if (num >= 4) return "level-chip level-3";
+            if (num >= 2) return "level-chip level-2";
+            if (num <= 1) return "level-chip level-1";
+            return "level-chip level-unknown";
         };
 
         const createCityHtml = (title, todayKey, tomorrowKey, data) => {
@@ -148,38 +250,55 @@
             const tomorrow = data[tomorrowKey] || {};
 
             const allergenKeys = Object.keys(today).filter(k => k !== "qualité globale");
+            allergenKeys.sort();
 
             const formatLabel = (label) => label.charAt(0).toUpperCase() + label.slice(1);
 
-            const getValue = (obj, key) => obj[key] ?? "-";
+            const getValueHtml = (obj, key) => {
+                const val = obj[key];
+                if (val === undefined || val === null || val === "-") {
+                    return `<span class="empty-dash">-</span>`;
+                }
+                return `<span class="${levelClass(val)}">${val}</span>`;
+            };
+
+            const globalToday = today["qualité globale"];
+            const globalHtml = globalToday 
+                ? `<div class="${levelClass(globalToday)}" style="margin-top: 6px;">Niveau ${globalToday}</div>`
+                : `<div class="empty-dash" style="margin-top: 6px;">-</div>`;
 
             return `
                 <div class="city-card">
-                    <div class="city-title">
-                        <span>${title}</span>
-                        <span class="city-subtitle">
-                            Qualité globale aujourd'hui:
-                            <span class="${levelClass(today["qualité globale"])}">${getValue(today, "qualité globale")}</span>
-                        </span>
+                    <div class="city-header">
+                        <div class="city-title-group">
+                            <span class="material-symbols-outlined">location_on</span>
+                            <span class="city-name">${title}</span>
+                        </div>
+                        <div class="global-quality">
+                            Aujourd'hui
+                            ${globalHtml}
+                        </div>
                     </div>
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Allergène</th>
-                                <th>Aujourd'hui</th>
-                                <th>Demain</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${allergenKeys.map(key => `
+                    <div class="table-container">
+                        <table>
+                            <thead>
                                 <tr>
-                                    <td>${formatLabel(key)}</td>
-                                    <td><span class="${levelClass(today[key])}">${getValue(today, key)}</span></td>
-                                    <td><span class="${levelClass(tomorrow[key])}">${getValue(tomorrow, key)}</span></td>
+                                    <th>Allergène</th>
+                                    <th>Aujourd'hui</th>
+                                    <th>Demain</th>
                                 </tr>
-                            `).join("")}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                ${allergenKeys.map(key => `
+                                    <tr>
+                                        <td class="allergen-name">${formatLabel(key)}</td>
+                                        <td>${getValueHtml(today, key)}</td>
+                                        <td>${getValueHtml(tomorrow, key)}</td>
+                                    </tr>
+                                `).join("")}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             `;
         };
@@ -204,8 +323,10 @@
                 result.innerHTML = html;
             })
             .catch(err => {
-                document.getElementById("result").innerText = "Impossible de charger les données.";
-                document.getElementById("error").innerText = err.message;
+                const errorEl = document.getElementById("error");
+                errorEl.style.display = "block";
+                errorEl.innerText = err.message || "Impossible de charger les données.";
+                document.getElementById("result").innerHTML = "";
             });
     </script>
 </body>
