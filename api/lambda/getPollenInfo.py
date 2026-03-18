@@ -1,41 +1,24 @@
 import json
+import os
 import urllib.request
 from datetime import date, timedelta
 import boto3
+from botocore.exceptions import ClientError
 
-codesPolluantsTranslationMapping = {
-    24: 'graminées'
-}
-URL_POLLEN = "https://data.airpl.org/media/pollens/prevision_communale_Pays_de_la_Loire_"
+URL_POLLEN_PARIS = "https://admindata.atmo-france.org/api/v2/data/indices/pollens?format=geojson&date={date}&date_historique={date_historique}&code_zone=75056&with_geom=false"
+URL_POLLEN_NANTES = "https://admindata.atmo-france.org/api/v2/data/indices/pollens?format=geojson&date={date}&date_historique={date_historique}&code_zone=44109&with_geom=false"
+URL_ATMO_LOGIN = "https://admindata.atmo-france.org/api/login"
+
 s3 = boto3.client('s3')
 bucket_name = "thomassed-repo-pollen"
 
-
-def getS3PollenFiles():
-    try:
-        response = s3.list_objects_v2(Bucket=bucket_name)
-        files = [obj['Key'] for obj in response.get('Contents', [])]
-        return {
-            "statusCode": 200,
-            "body": {
-                "files": files
-            }
-        }
-    except Exception as e:
-        return {
-            "statusCode": 500,
-            "body": f"Erreur : {str(e)}"
-        }
-
-files = getS3PollenFiles()
-
-# Date du jour
+# Dates
 aujourd_hui = date.today()
-date_du_jour = aujourd_hui.strftime("%Y_%m_%d")
+date_du_jour = aujourd_hui.strftime("%Y-%m-%d")
+date_du_jour_s3 = aujourd_hui.strftime("%Y_%m_%d")
 
-# Date du lendemain
 lendemain = aujourd_hui + timedelta(days=1)
-date_du_lendemain = lendemain.strftime("%Y_%m_%d")
+date_du_lendemain = lendemain.strftime("%Y-%m-%d")
 
 codesPolluantsTranslationMapping = {
     "code_qual": 'qualité globale',
@@ -47,22 +30,8 @@ codesPolluantsTranslationMapping = {
     "code_ambr": 'ambroisie'
 }
 
-def get_pollen_data(date):
-    """If data is already downloaded on s3, fetch it from there."""
-    if date in files:
-        return s3.get_object(Bucket=bucket_name, Key=date)['Body'].read().decode('utf-8')
-
-    """Fetch pollen data for a specific date."""
-    with urllib.request.urlopen(URL_POLLEN + date  + '.geojson') as response:
-        raw = response.read().decode("utf-8")
-        data = json.loads(raw)['features']
-    # Save the data to S3
-    s3.put_object(Bucket=bucket_name, Key=date, Body=json.dumps(data))
-    
-    return data
-
 def extract_pollen_info(pollen_data):
-    """Extract pollen information from the data."""
+    """Extract pollen information from the data (from a list of features)."""
     pollen_info = {}
     for feature in pollen_data:
         properties = feature["properties"]
@@ -70,27 +39,97 @@ def extract_pollen_info(pollen_data):
             if code in properties:
                 pollen_info[translation] = properties[code]
     return pollen_info
+
+def get_atmo_token():
+    username = "X"
+    password = "X"
+    data = json.dumps({"username": username, "password": password}).encode("utf-8")
+    
+    req = urllib.request.Request(
+        URL_ATMO_LOGIN, 
+        data=data, 
+        headers={"Content-Type": "application/json", "accept": "*/*"}, 
+        method="POST"
+    )
+    with urllib.request.urlopen(req) as response:
+        res = json.loads(response.read().decode("utf-8"))
+        return res.get("token")
+
+def fetch_and_extract_pollen_data(url_template, target_date, date_historique, token):
+    url = url_template.format(date=target_date, date_historique=date_historique)
+    req = urllib.request.Request(
+        url, 
+        headers={"Authorization": f"Bearer {token}", "accept": "application/json"}
+    )
+    with urllib.request.urlopen(req) as response:
+        data = json.loads(response.read().decode("utf-8"))
+        # We pass the 'features' array directly to extract_pollen_info
+        return extract_pollen_info(data.get("features", []))
+
+def get_cached_data(cache_key):
+    try:
+        response = s3.get_object(Bucket=bucket_name, Key=cache_key)
+        return json.loads(response['Body'].read().decode('utf-8'))
+    except ClientError as e:
+        if e.response['Error']['Code'] == "NoSuchKey":
+            return None
+        raise e
+
+def save_cached_data(cache_key, data):
+    s3.put_object(Bucket=bucket_name, Key=cache_key, Body=json.dumps(data))
+
 def lambda_handler(event, context):
+    cache_key = f"atmo_pollen_extracted_{date_du_jour_s3}.json"
+    
+    # 1. Try to fetch from S3 cache
+    cached_data = get_cached_data(cache_key)
+    if cached_data is not None:
+        print("Using cached data")
+        return {
+            "statusCode": 200,
+            "headers": {
+                "Content-Type": "application/json",
+                "Access-Control-Allow-Origin": "*",
+            },
+            "body": json.dumps(cached_data),
+        }
 
+    # 2. If no cache, login to Atmo API and fetch data
+    try:
+        token = get_atmo_token()
+    except Exception as e:
+        return {
+            "statusCode": 500,
+            "body": json.dumps({"error": "Failed to login to Atmo API", "details": str(e)})
+        }
 
-    pollenDataToday = get_pollen_data(date_du_jour)
-    pollenDataTomorrow = get_pollen_data(date_du_lendemain)
-    pollen_info_today = extract_pollen_info(pollenDataToday)
-    pollen_info_tomorrow = extract_pollen_info(pollenDataTomorrow)
-
-    parisPollenDataToday = get_pollen_data(date_du_jour)
-    parisPollenDataTomorrow = get_pollen_data(date_du_lendemain)
-    paris_pollen_info_today = extract_pollen_info(parisPollenDataToday)
-    paris_pollen_info_tomorrow = extract_pollen_info(parisPollenDataTomorrow)
-
-    response_body = {
-        "date_du_jour_nantes": pollen_info_today,
-        "date_du_lendemain_nantes": pollen_info_tomorrow,
-        "date_du_jour_paris": paris_pollen_info_today,
-        "date_du_lendemain_paris": paris_pollen_info_tomorrow,
-    }
-
-    return {
-        "statusCode": 200,
-        "body": json.dumps(response_body)
-    }
+    try:
+        paris_today = fetch_and_extract_pollen_data(URL_POLLEN_PARIS, date_du_jour, date_du_jour, token)
+        paris_tomorrow = fetch_and_extract_pollen_data(URL_POLLEN_PARIS, date_du_lendemain, date_du_lendemain, token)
+        
+        nantes_today = fetch_and_extract_pollen_data(URL_POLLEN_NANTES, date_du_jour, date_du_jour, token)
+        nantes_tomorrow = fetch_and_extract_pollen_data(URL_POLLEN_NANTES, date_du_lendemain, date_du_lendemain, token)
+        
+        fresh_data = {
+            "date_du_jour_nantes": nantes_today,
+            "date_du_lendemain_nantes": nantes_tomorrow,
+            "date_du_jour_paris": paris_today,
+            "date_du_lendemain_paris": paris_tomorrow,
+        }
+        
+        # 3. Save to S3 cache
+        save_cached_data(cache_key, fresh_data)
+        
+        return {
+            "statusCode": 200,
+            "headers": {
+                "Content-Type": "application/json",
+                "Access-Control-Allow-Origin": "*",
+            },
+            "body": json.dumps(fresh_data),
+        }
+    except Exception as e:
+        return {
+            "statusCode": 500,
+            "body": json.dumps({"error": "Failed to fetch data from Atmo API", "details": str(e)})
+        }
