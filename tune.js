@@ -1,9 +1,9 @@
 // HTML injécté dynamiquement pour garder index.html propre
-const guitarHtml = `
+const tuneHtml = `
     <div class="tuners-wrapper">
         <div class="manual-tuner-section">
-            <h2 class="guitar-title">Accordeur standard</h2>
-            <p class="guitar-subtitle">Accordez votre guitare à l'oreille (Mi, La, Ré, Sol, Si, Mi)</p>
+            <h2 class="tune-title">tune standard</h2>
+            <p class="tune-subtitle">Accordez votre tunee à l'oreille (Mi, La, Ré, Sol, Si, Mi)</p>
             
             <div class="strings-grid">
                 <!-- E2: 82.41 Hz -->
@@ -45,8 +45,8 @@ const guitarHtml = `
         </div>
         
         <div class="auto-tuner-section">
-            <h2 class="guitar-title">Accordeur automatique</h2>
-            <p class="guitar-subtitle">Utilisez le microphone pour détecter la note jouée</p>
+            <h2 class="tune-title">tune automatique</h2>
+            <p class="tune-subtitle">Utilisez le microphone pour détecter la note jouée</p>
             
             <button id="mic-toggle-btn" class="mic-btn" onclick="toggleMicrophone()">
                 <span class="material-symbols-outlined" id="mic-icon">mic</span>
@@ -71,13 +71,13 @@ const guitarHtml = `
 `;
 
 document.addEventListener('DOMContentLoaded', () => {
-    const container = document.getElementById('guitar-container');
+    const container = document.getElementById('tune-container');
     if (container) {
-        container.innerHTML = guitarHtml;
+        container.innerHTML = tuneHtml;
     }
 });
 
-// Guitar Tuner Audio Logic
+// tune Tuner Audio Logic
 let audioCtx = null;
 let oscillator = null;
 let gainNode = null;
@@ -91,7 +91,7 @@ function initAudio() {
 
 function playTone(frequency, btnElement) {
     initAudio();
-    
+
     stopAudio();
 
     if (audioCtx.state === 'suspended') {
@@ -121,10 +121,10 @@ function stopAudio() {
     if (oscillator && gainNode) {
         gainNode.gain.setValueAtTime(gainNode.gain.value, audioCtx.currentTime);
         gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
-        
+
         try {
             oscillator.stop(audioCtx.currentTime + 0.1);
-        } catch (e) {}
+        } catch (e) { }
 
         oscillator = null;
         gainNode = null;
@@ -166,25 +166,25 @@ function toggleMicrophone() {
 async function startMicrophone() {
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        
+
         if (!audioContextForMic) {
             audioContextForMic = new (window.AudioContext || window.webkitAudioContext)();
         }
-        
+
         if (audioContextForMic.state === 'suspended') {
             await audioContextForMic.resume();
         }
-        
+
         analyser = audioContextForMic.createAnalyser();
         analyser.fftSize = 2048;
-        
+
         micStreamSource = audioContextForMic.createMediaStreamSource(stream);
         micStreamSource.connect(analyser);
-        
+
         isMicActive = true;
         updateMicUI(true);
         document.getElementById('tuner-display').classList.add('active');
-        
+
         detectPitch();
     } catch (err) {
         alert("Impossible d'accéder au microphone: " + err.message);
@@ -203,7 +203,7 @@ function stopMicrophone() {
         micStreamSource = null;
     }
     updateMicUI(false);
-    
+
     // Default UI state
     document.getElementById('freq-val').innerText = "--";
     document.getElementById('note-eng').innerText = "--";
@@ -212,7 +212,7 @@ function stopMicrophone() {
     document.getElementById('pitch-indicator').classList.remove('in-tune');
     document.getElementById('pitch-status').classList.remove('in-tune');
     document.getElementById('pitch-status').innerText = "En attente d'un son...";
-    
+
     document.getElementById('tuner-display').classList.remove('active');
 }
 
@@ -220,7 +220,7 @@ function updateMicUI(active) {
     const btnText = document.getElementById('mic-btn-text');
     const icon = document.getElementById('mic-icon');
     const btn = document.getElementById('mic-toggle-btn');
-    
+
     if (active) {
         btnText.innerText = "Désactiver le microphone";
         icon.innerText = "mic_off";
@@ -299,30 +299,30 @@ function detectPitch() {
 
     analyser.getFloatTimeDomainData(buffer);
     let pitch = autoCorrelate(buffer, audioContextForMic.sampleRate);
-    
+
     // Throttling UI updates to keep it readable, but calculate every frame
     const now = performance.now();
     if (pitch !== -1 && now - lastUpdate > 50) {
         lastUpdate = now;
-        
+
         let note = noteFromPitch(pitch);
         let noteEng = noteStringsEng[note % 12];
         let noteFr = noteStringsFr[note % 12];
         let octave = Math.floor(note / 12) - 1;
-        
+
         let cents = centsOffFromPitch(pitch, note);
-        
+
         document.getElementById('freq-val').innerText = pitch.toFixed(1);
         document.getElementById('note-eng').innerText = noteEng + octave;
         document.getElementById('note-fr').innerText = "(" + noteFr + ")";
-        
+
         let indicator = document.getElementById('pitch-indicator');
         let status = document.getElementById('pitch-status');
-        
+
         // [-50, 50] mapped to [0%, 100%] => 50% + cents
         let pos = Math.max(0, Math.min(100, 50 + cents));
         indicator.style.left = pos + "%";
-        
+
         if (Math.abs(cents) < 10) {
             indicator.classList.add('in-tune');
             status.classList.add('in-tune');
