@@ -5,6 +5,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Pollen</title>
+    <link rel="stylesheet" href="accordeur.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Roboto:wght@400;500&display=swap');
         @import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200');
@@ -20,17 +21,39 @@
 
         .header {
             background: #ffffff;
-            padding: 16px 24px;
+            padding: 8px 24px;
             border-bottom: 1px solid #dadce0;
             display: flex;
             align-items: center;
-            gap: 12px;
             position: sticky;
             top: 0;
             z-index: 10;
+            overflow-x: auto;
         }
 
-        .header h1 {
+        .app-selector {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+            padding: 8px 12px;
+            border-radius: 8px;
+            opacity: 0.6;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .app-selector.active {
+            opacity: 1;
+            background: #f8f9fa;
+        }
+
+        .app-selector:hover {
+            opacity: 1;
+            background: #f1f3f4;
+        }
+
+        .app-selector h1 {
             font-family: 'Google Sans', sans-serif;
             font-size: 22px;
             font-weight: 500;
@@ -38,9 +61,37 @@
             color: #202124;
         }
 
-        .header .material-symbols-outlined {
-            color: #34A853;
+        .app-selector .material-symbols-outlined {
             font-size: 28px;
+        }
+
+        #tab-pollen .material-symbols-outlined {
+            color: #34A853;
+        }
+        
+        #tab-guitar .material-symbols-outlined {
+            color: #1a73e8;
+        }
+
+        .header-divider {
+            width: 1px;
+            height: 32px;
+            background-color: #dadce0;
+            margin: 0 8px;
+        }
+
+        .app-container {
+            display: none;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        .app-container.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         #container {
@@ -249,16 +300,49 @@
 
 <body>
     <div class="header">
-        <span class="material-symbols-outlined">filter_vintage</span>
-        <h1>Indice de pollen</h1>
-    </div>
-    <div id="container">
-        <div id="result">
-            <!-- Initial content will be populated by JS -->
+        <div class="app-selector active" id="tab-pollen" onclick="switchApp('pollen')">
+            <span class="material-symbols-outlined">filter_vintage</span>
+            <h1>Indice de pollen</h1>
         </div>
-        <div id="error"></div>
+        <div class="header-divider"></div>
+        <div class="app-selector" id="tab-guitar" onclick="switchApp('guitar')">
+            <span class="material-symbols-outlined">music_note</span>
+            <h1>Accordeur</h1>
+        </div>
     </div>
+    
+    <div id="pollen-app" class="app-container active">
+        <div id="container">
+            <div id="result">
+                <!-- Initial content will be populated by JS -->
+            </div>
+            <div id="error"></div>
+        </div>
+    </div>
+
+    <div id="guitar-app" class="app-container">
+        <div id="guitar-container">
+            <!-- Accordeur chargé via accordeur.js -->
+        </div>
+    </div>
+
     <script>
+        // App Switching Logic
+        function switchApp(appId) {
+            document.getElementById('tab-pollen').classList.remove('active');
+            document.getElementById('tab-guitar').classList.remove('active');
+            document.getElementById(`tab-${appId}`).classList.add('active');
+
+            document.getElementById('pollen-app').classList.remove('active');
+            document.getElementById('guitar-app').classList.remove('active');
+            document.getElementById(`${appId}-app`).classList.add('active');
+
+            if (appId !== 'guitar') {
+                if (typeof stopAudio === 'function') stopAudio();
+                if (typeof stopMicrophone === 'function') stopMicrophone();
+            }
+        }
+
         const levelClass = (value) => {
             if (value === undefined || value === null || value === "-") return "level-chip level-unknown";
             const num = parseInt(value, 10);
@@ -404,6 +488,7 @@
                 document.getElementById("result").innerHTML = "";
             });
     </script>
+    <script src="accordeur.js"></script>
 </body>
 
 </html>
