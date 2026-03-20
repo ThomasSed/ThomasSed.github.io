@@ -2,7 +2,7 @@
 const tuneHtml = `
     <div class="tuners-wrapper">
         <div class="manual-tuner-section">
-            <h2 class="tune-title">tune standard</h2>
+            <h2 class="tune-title">Accordeur standard</h2>
             <p class="tune-subtitle">Accordez votre tunee à l'oreille (Mi, La, Ré, Sol, Si, Mi)</p>
             
             <div class="strings-grid">
@@ -45,7 +45,7 @@ const tuneHtml = `
         </div>
         
         <div class="auto-tuner-section">
-            <h2 class="tune-title">tune automatique</h2>
+            <h2 class="tune-title">Accordeur automatique</h2>
             <p class="tune-subtitle">Utilisez le microphone pour détecter la note jouée</p>
             
             <button id="mic-toggle-btn" class="mic-btn" onclick="toggleMicrophone()">
