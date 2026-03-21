@@ -119,8 +119,21 @@
             border: 1px solid #dadce0;
             border-radius: 8px;
             overflow: hidden;
-            transition: box-shadow 0.2s ease-in-out;
+            transition: box-shadow 0.2s ease-in-out, transform 0.2s ease-in-out;
             min-width: 0;
+            cursor: pointer;
+        }
+
+        .city-card.focused {
+            transform: scale(1.02);
+            box-shadow: 0 4px 8px rgba(60, 64, 67, 0.2), 0 2px 4px rgba(60, 64, 67, 0.1);
+            border-color: #1a73e8;
+        }
+
+        .grid.has-focus {
+            grid-template-columns: 1fr;
+            max-width: 600px;
+            margin: 0 auto;
         }
 
         .city-card:hover {
@@ -287,6 +300,9 @@
             .grid {
                 grid-template-columns: 1fr 1fr;
             }
+            .grid.has-focus {
+                grid-template-columns: 1fr;
+            }
         }
 
         @media (max-width: 600px) {
@@ -365,6 +381,58 @@
         window.addEventListener('hashchange', handleHash);
         window.addEventListener('DOMContentLoaded', handleHash);
 
+        function toggleFocus(cityName) {
+            const urlParams = new URLSearchParams(window.location.search);
+            const currentFocus = urlParams.get('focus');
+            
+            if (currentFocus === cityName) {
+                urlParams.delete('focus');
+            } else {
+                urlParams.set('focus', cityName);
+            }
+            
+            let newUrl = window.location.pathname;
+            const qs = urlParams.toString();
+            if (qs) {
+                newUrl += '?' + qs;
+            }
+            newUrl += window.location.hash;
+            window.history.pushState({}, '', newUrl);
+            
+            applyFocus();
+        }
+
+        function applyFocus() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const focus = urlParams.get('focus');
+            const grid = document.querySelector('.grid');
+            if (!grid) return;
+
+            if (focus) {
+                grid.classList.add('has-focus');
+                const cards = grid.querySelectorAll('.city-card');
+                cards.forEach(card => {
+                    if (card.dataset.city === focus) {
+                        card.classList.add('focused');
+                        card.style.display = '';
+                    } else {
+                        card.classList.remove('focused');
+                        card.style.display = 'none';
+                    }
+                });
+            } else {
+                grid.classList.remove('has-focus');
+                const cards = grid.querySelectorAll('.city-card');
+                cards.forEach(card => {
+                    card.classList.remove('focused');
+                    card.style.display = '';
+                });
+            }
+        }
+
+        window.addEventListener('popstate', applyFocus);
+        window.addEventListener('DOMContentLoaded', applyFocus);
+
         const levelClass = (value) => {
             if (value === undefined || value === null || value === "-") return "level-chip level-unknown";
             const num = parseInt(value, 10);
@@ -382,8 +450,9 @@
         };
 
         const createCitySkeletonHtml = (title) => {
+            const cityKey = title.toLowerCase();
             return `
-                <div class="city-card">
+                <div class="city-card" data-city="${cityKey}" onclick="toggleFocus('${cityKey}')">
                     <div class="city-header">
                         <div class="city-title-group">
                             <span class="material-symbols-outlined" style="color: #dadce0;">location_on</span>
@@ -419,6 +488,7 @@
         };
 
         const createCityHtml = (title, todayKey, tomorrowKey, data) => {
+            const cityKey = title.toLowerCase();
             const today = data[todayKey] || {};
             const tomorrow = data[tomorrowKey] || {};
 
@@ -441,7 +511,7 @@
                 : `<div class="empty-dash" style="margin-top: 6px;">-</div>`;
 
             return `
-                <div class="city-card">
+                <div class="city-card" data-city="${cityKey}" onclick="toggleFocus('${cityKey}')">
                     <div class="city-header">
                         <div class="city-title-group">
                             <span class="material-symbols-outlined">location_on</span>
@@ -481,8 +551,10 @@
             <div class="grid">
                 ${createCitySkeletonHtml("Nantes")}
                 ${createCitySkeletonHtml("Paris")}
+                ${createCitySkeletonHtml("Strasbourg")}
             </div>
         `;
+        applyFocus();
 
         fetch("https://h987gq9iyg.execute-api.eu-north-1.amazonaws.com/pollen-etape/get-pollen")
             .then(r => {
@@ -498,10 +570,12 @@
                     <div class="grid">
                         ${createCityHtml("Nantes", "date_du_jour_nantes", "date_du_lendemain_nantes", data)}
                         ${createCityHtml("Paris", "date_du_jour_paris", "date_du_lendemain_paris", data)}
+                        ${createCityHtml("Strasbourg", "date_du_jour_strasbourg", "date_du_lendemain_strasbourg", data)}
                     </div>
                 `;
 
                 result.innerHTML = html;
+                applyFocus();
             })
             .catch(err => {
                 const errorEl = document.getElementById("error");
