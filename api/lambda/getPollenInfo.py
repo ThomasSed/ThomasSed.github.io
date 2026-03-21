@@ -8,6 +8,7 @@ from botocore.exceptions import ClientError
 URL_POLLEN_PARIS = "https://admindata.atmo-france.org/api/v2/data/indices/pollens?format=geojson&date={date}&date_historique={date_historique}&code_zone=75056&with_geom=false"
 URL_POLLEN_NANTES = "https://admindata.atmo-france.org/api/v2/data/indices/pollens?format=geojson&date={date}&date_historique={date_historique}&code_zone=44109&with_geom=false"
 URL_POLLEN_STRASBOURG = "https://admindata.atmo-france.org/api/v2/data/indices/pollens?format=geojson&date={date}&date_historique={date_historique}&code_zone=67482&with_geom=false"
+URL_POLLEN_MARSEILLE = "https://admindata.atmo-france.org/api/v2/data/indices/pollens?format=geojson&date={date}&date_historique={date_historique}&code_zone=13055&with_geom=false"
 URL_ATMO_LOGIN = "https://admindata.atmo-france.org/api/login"
 
 s3 = boto3.client('s3')
@@ -114,6 +115,9 @@ def lambda_handler(event, context):
         strasbourg_today = fetch_and_extract_pollen_data(URL_POLLEN_STRASBOURG, date_du_jour, date_du_jour, token)
         strasbourg_tomorrow = fetch_and_extract_pollen_data(URL_POLLEN_STRASBOURG, date_du_lendemain, date_du_lendemain, token)
         
+        marseille_today = fetch_and_extract_pollen_data(URL_POLLEN_MARSEILLE, date_du_jour, date_du_jour, token)
+        marseille_tomorrow = fetch_and_extract_pollen_data(URL_POLLEN_MARSEILLE, date_du_lendemain, date_du_lendemain, token)
+        
         fresh_data = {
             "date_du_jour_nantes": nantes_today,
             "date_du_lendemain_nantes": nantes_tomorrow,
@@ -121,6 +125,8 @@ def lambda_handler(event, context):
             "date_du_lendemain_paris": paris_tomorrow,
             "date_du_jour_strasbourg": strasbourg_today,
             "date_du_lendemain_strasbourg": strasbourg_tomorrow,
+            "date_du_jour_marseille": marseille_today,
+            "date_du_lendemain_marseille": marseille_tomorrow,
         }
         
         # 3. Save to S3 cache
