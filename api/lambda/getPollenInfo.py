@@ -43,8 +43,10 @@ def extract_pollen_info(pollen_data):
     return pollen_info
 
 def get_atmo_token():
-    username = "X"
-    password = "X"
+    username = os.environ.get("ATMO_USERNAME")
+    password = os.environ.get("ATMO_PASSWORD")
+    if not username or not password:
+        raise Exception("ATMO_USERNAME or ATMO_PASSWORD environment variables are not set")
     data = json.dumps({"username": username, "password": password}).encode("utf-8")
     
     req = urllib.request.Request(
@@ -106,28 +108,28 @@ def lambda_handler(event, context):
         }
 
     try:
-        paris_today = fetch_and_extract_pollen_data(URL_POLLEN_PARIS, date_du_jour, date_du_jour, token)
-        paris_tomorrow = fetch_and_extract_pollen_data(URL_POLLEN_PARIS, date_du_lendemain, date_du_lendemain, token)
-        
-        nantes_today = fetch_and_extract_pollen_data(URL_POLLEN_NANTES, date_du_jour, date_du_jour, token)
-        nantes_tomorrow = fetch_and_extract_pollen_data(URL_POLLEN_NANTES, date_du_lendemain, date_du_lendemain, token)
-
-        strasbourg_today = fetch_and_extract_pollen_data(URL_POLLEN_STRASBOURG, date_du_jour, date_du_jour, token)
-        strasbourg_tomorrow = fetch_and_extract_pollen_data(URL_POLLEN_STRASBOURG, date_du_lendemain, date_du_lendemain, token)
-        
-        marseille_today = fetch_and_extract_pollen_data(URL_POLLEN_MARSEILLE, date_du_jour, date_du_jour, token)
-        marseille_tomorrow = fetch_and_extract_pollen_data(URL_POLLEN_MARSEILLE, date_du_lendemain, date_du_lendemain, token)
-        
-        fresh_data = {
-            "date_du_jour_nantes": nantes_today,
-            "date_du_lendemain_nantes": nantes_tomorrow,
-            "date_du_jour_paris": paris_today,
-            "date_du_lendemain_paris": paris_tomorrow,
-            "date_du_jour_strasbourg": strasbourg_today,
-            "date_du_lendemain_strasbourg": strasbourg_tomorrow,
-            "date_du_jour_marseille": marseille_today,
-            "date_du_lendemain_marseille": marseille_tomorrow,
+        urls_to_fetch = {
+            "date_du_jour_paris": (URL_POLLEN_PARIS, date_du_jour, token),
+            "date_du_lendemain_paris": (URL_POLLEN_PARIS, date_du_lendemain, token),
+            "date_du_jour_nantes": (URL_POLLEN_NANTES, date_du_jour, token),
+            "date_du_lendemain_nantes": (URL_POLLEN_NANTES, date_du_lendemain, token),
+            "date_du_jour_strasbourg": (URL_POLLEN_STRASBOURG, date_du_jour, token),
+            "date_du_lendemain_strasbourg": (URL_POLLEN_STRASBOURG, date_du_lendemain, token),
+            "date_du_jour_marseille": (URL_POLLEN_MARSEILLE, date_du_jour, token),
+            "date_du_lendemain_marseille": (URL_POLLEN_MARSEILLE, date_du_lendemain, token),
         }
+
+        fresh_data = {}
+        import concurrent.futures
+        with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
+            future_to_key = {
+                executor.submit(fetch_and_extract_pollen_data, url, req_date, req_date, tok): key
+                for key, (url, req_date, tok) in urls_to_fetch.items()
+            }
+            
+            for future in concurrent.futures.as_completed(future_to_key):
+                key = future_to_key[future]
+                fresh_data[key] = future.result()
         
         # 3. Save to S3 cache
         save_cached_data(cache_key, fresh_data)
