@@ -300,6 +300,7 @@
             .grid {
                 grid-template-columns: 1fr 1fr;
             }
+
             .grid.has-focus {
                 grid-template-columns: 1fr;
             }
@@ -370,27 +371,25 @@
                 window.location.hash = appId;
             }
         }
-
         function handleHash() {
             const hash = window.location.hash.replace('#', '');
             if (hash === 'tune' || hash === 'pollen') {
                 switchApp(hash, false);
             }
         }
-
         window.addEventListener('hashchange', handleHash);
         window.addEventListener('DOMContentLoaded', handleHash);
 
         function toggleFocus(cityName) {
             const urlParams = new URLSearchParams(window.location.search);
             const currentFocus = urlParams.get('focus');
-            
+
             if (currentFocus === cityName) {
                 urlParams.delete('focus');
             } else {
                 urlParams.set('focus', cityName);
             }
-            
+
             let newUrl = window.location.pathname;
             const qs = urlParams.toString();
             if (qs) {
@@ -398,7 +397,7 @@
             }
             newUrl += window.location.hash;
             window.history.pushState({}, '', newUrl);
-            
+
             applyFocus();
         }
 
