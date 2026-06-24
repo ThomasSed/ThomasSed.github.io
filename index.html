@@ -69,6 +69,10 @@
             color: #34A853;
         }
 
+        #tab-bingo .material-symbols-outlined {
+            color: #ea4335;
+        }
+
         #tab-tune .material-symbols-outlined {
             color: #1a73e8;
         }
@@ -330,6 +334,11 @@
             <h1>Indice de pollen</h1>
         </div>
         <div class="header-divider"></div>
+        <div class="app-selector" id="tab-bingo" onclick="switchApp('bingo')">
+            <span class="material-symbols-outlined">grid_on</span>
+            <h1>Bingo</h1>
+        </div>
+        <div class="header-divider"></div>
         <div class="app-selector" id="tab-tune" onclick="switchApp('tune')">
             <span class="material-symbols-outlined">music_note</span>
             <h1>Accordeur</h1>
@@ -345,6 +354,9 @@
         </div>
     </div>
 
+    <div id="bingo-app" class="app-container">
+    </div>
+
     <div id="tune-app" class="app-container">
         <div id="tune-container">
             <!-- tune chargé via tune.js -->
@@ -352,13 +364,17 @@
     </div>
 
     <script>
+
+
         // App Switching Logic
         function switchApp(appId, updateHash = true) {
             document.getElementById('tab-pollen').classList.remove('active');
+            document.getElementById('tab-bingo').classList.remove('active');
             document.getElementById('tab-tune').classList.remove('active');
             document.getElementById(`tab-${appId}`).classList.add('active');
 
             document.getElementById('pollen-app').classList.remove('active');
+            document.getElementById('bingo-app').classList.remove('active');
             document.getElementById('tune-app').classList.remove('active');
             document.getElementById(`${appId}-app`).classList.add('active');
 
@@ -373,7 +389,7 @@
         }
         function handleHash() {
             const hash = window.location.hash.replace('#', '');
-            if (hash === 'tune' || hash === 'pollen') {
+            if (hash === 'tune' || hash === 'pollen' || hash === 'bingo') {
                 switchApp(hash, false);
             }
         }
@@ -586,6 +602,7 @@
             });
     </script>
     <script src="tune.js"></script>
+    <script src="bingo/bingo.js"></script>
 </body>
 
 </html>
