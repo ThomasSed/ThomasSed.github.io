@@ -109,21 +109,13 @@ window.createBingoSheets = async function() {
 
         const apiUrl = 'https://zhwlknt3qg.execute-api.eu-north-1.amazonaws.com/default/crud-bingo';
 
-        // Try POST first
+        // Use POST with text/plain to completely bypass the browser's CORS preflight (OPTIONS) request
         let res = await fetch(apiUrl, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            // Browsers don't send OPTIONS preflight for text/plain POSTs
+            headers: { 'Content-Type': 'text/plain' },
             body: JSON.stringify(payload)
         });
-
-        if (res.status === 409) {
-            // Already exists, try PUT
-            res = await fetch(apiUrl, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-        }
 
         if (!res.ok) {
             throw new Error("Erreur de l'API (" + res.status + ")");

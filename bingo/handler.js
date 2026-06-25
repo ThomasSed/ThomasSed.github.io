@@ -1,6 +1,5 @@
-import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { DynamoDBDocumentClient, PutCommand, GetCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
-import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
+const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
+const { DynamoDBDocumentClient, PutCommand, GetCommand, UpdateCommand } = require("@aws-sdk/lib-dynamodb");
 
 const client = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(client);
@@ -14,7 +13,7 @@ const corsHeaders = {
     "Access-Control-Allow-Headers": "Content-Type, Authorization",
 };
 
-export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
+exports.handler = async (event) => {
     try {
         const method = event.httpMethod;
 
@@ -27,7 +26,7 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
             };
         }
 
-        let response: APIGatewayProxyResult;
+        let response;
 
         switch (method) {
             case "POST":
@@ -65,7 +64,7 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
     }
 };
 
-const createGrid = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
+const createGrid = async (event) => {
     if (!event.body) {
         return { statusCode: 400, body: JSON.stringify({ message: "Missing request body" }) };
     }
@@ -95,7 +94,7 @@ const createGrid = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyR
     };
 };
 
-const updateGrid = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
+const updateGrid = async (event) => {
     if (!event.body) {
         return { statusCode: 400, body: JSON.stringify({ message: "Missing request body" }) };
     }
@@ -125,7 +124,7 @@ const updateGrid = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyR
             statusCode: 200,
             body: JSON.stringify({ message: "Bingo grid updated successfully", data: result.Attributes }),
         };
-    } catch (error: any) {
+    } catch (error) {
          if (error.name === "ConditionalCheckFailedException") {
             return { statusCode: 404, body: JSON.stringify({ message: "Grid not found for this username" }) };
         }
@@ -133,7 +132,7 @@ const updateGrid = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyR
     }
 };
 
-const getGrid = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
+const getGrid = async (event) => {
     const username = event.queryStringParameters?.username;
 
     if (!username) {
