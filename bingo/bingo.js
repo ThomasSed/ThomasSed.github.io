@@ -1,4 +1,8 @@
 let currentParsedFields = [];
+let currentGridFields = [];
+let currentUsername = '';
+
+const BINGO_API_URL = 'https://tc3q8oigfk.execute-api.eu-north-1.amazonaws.com/default/crud-bingo';
 
 const bingoHTML = `
     <div style="display: flex; justify-content: flex-end; padding: 16px;">
@@ -107,10 +111,8 @@ window.createBingoSheets = async function() {
             grid: currentParsedFields
         };
 
-        const apiUrl = 'https://tc3q8oigfk.execute-api.eu-north-1.amazonaws.com/default/crud-bingo';
-
         // Use POST with text/plain to completely bypass the browser's CORS preflight (OPTIONS) request
-        let res = await fetch(apiUrl, {
+        let res = await fetch(BINGO_API_URL, {
             method: 'POST',
             // Browsers don't send OPTIONS preflight for text/plain POSTs
             headers: { 'Content-Type': 'text/plain' },
@@ -250,6 +252,33 @@ function renderBingoPreview(fields) {
     });
 }
 
+function applyTileSelectedStyles(tile, selected) {
+    tile.dataset.selected = selected ? 'true' : 'false';
+    if (selected) {
+        tile.style.background = '#e6f4ea';
+        tile.style.borderColor = '#34A853';
+        tile.style.transform = 'scale(0.98)';
+        tile.style.boxShadow = 'inset 0 2px 4px rgba(0,0,0,0.1)';
+    } else {
+        tile.style.background = 'white';
+        tile.style.borderColor = '#dadce0';
+        tile.style.transform = 'translateY(0)';
+        tile.style.boxShadow = '0 1px 2px rgba(60,64,67,0.1)';
+    }
+}
+
+async function saveBingoGrid(username, grid) {
+    const res = await fetch(BINGO_API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({ username, grid })
+    });
+
+    if (!res.ok) {
+        throw new Error("Erreur de l'API (" + res.status + ")");
+    }
+}
+
 // Main View API Logic
 window.handleQuiChange = function(event) {
     const username = event.target.value;
@@ -258,6 +287,8 @@ window.handleQuiChange = function(event) {
     if (username) {
         fetchBingoGrid(username, container);
     } else {
+        currentUsername = '';
+        currentGridFields = [];
         if (container) container.innerHTML = '';
     }
 }
@@ -269,7 +300,7 @@ window.fetchBingoGrid = async function(username, container) {
     container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: #5f6368; padding: 40px;"><span class="material-symbols-outlined" style="animation: spin 2s linear infinite; display: block; margin-bottom: 12px; font-size: 32px;">sync</span> Chargement de la grille...</div>';
     
     try {
-        const res = await fetch('https://tc3q8oigfk.execute-api.eu-north-1.amazonaws.com/default/crud-bingo?username=' + encodeURIComponent(username));
+        const res = await fetch(BINGO_API_URL + '?username=' + encodeURIComponent(username));
         
         if (res.status === 404) {
             container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: #5f6368; padding: 40px; background: white; border-radius: 8px; border: 1px solid #dadce0;">Aucune grille trouvée pour ' + username + '</div>';
@@ -281,7 +312,13 @@ window.fetchBingoGrid = async function(username, container) {
         }
         
         const data = await res.json();
-        const fields = data.grid || [];
+        const fields = (data.grid || []).map(field => ({
+            qui: field.qui,
+            quoi: field.quoi,
+            checked: !!field.checked
+        }));
+        currentUsername = username;
+        currentGridFields = fields;
         renderMainBingoGrid(fields, container);
     } catch (err) {
         console.error(err);
@@ -297,8 +334,9 @@ window.renderMainBingoGrid = function(fields, container) {
         return;
     }
     
-    fields.forEach(field => {
+    fields.forEach((field, index) => {
         const div = document.createElement('div');
+        div.dataset.index = String(index);
         div.style.background = 'white';
         div.style.border = '1px solid #dadce0';
         div.style.borderRadius = '8px';
@@ -314,6 +352,8 @@ window.renderMainBingoGrid = function(fields, container) {
         div.style.transition = 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)';
         div.style.boxShadow = '0 1px 2px rgba(60,64,67,0.1)';
         
+        applyTileSelectedStyles(div, !!field.checked);
+
         // Hover effects
         div.onmouseover = function() { 
             if (this.dataset.selected !== 'true') {
@@ -328,20 +368,21 @@ window.renderMainBingoGrid = function(fields, container) {
             }
         };
         
-        // Click interaction (toggle selected state)
-        div.onclick = function() {
-            if (this.dataset.selected === 'true') {
-                this.dataset.selected = 'false';
-                this.style.background = 'white';
-                this.style.borderColor = '#dadce0';
-                this.style.transform = 'translateY(0)';
-                this.style.boxShadow = '0 1px 2px rgba(60,64,67,0.1)';
-            } else {
-                this.dataset.selected = 'true';
-                this.style.background = '#e6f4ea'; // Google green light
-                this.style.borderColor = '#34A853'; // Google green
-                this.style.transform = 'scale(0.98)';
-                this.style.boxShadow = 'inset 0 2px 4px rgba(0,0,0,0.1)';
+        div.onclick = async function() {
+            const tileIndex = parseInt(this.dataset.index, 10);
+            const wasSelected = this.dataset.selected === 'true';
+            const newSelected = !wasSelected;
+
+            applyTileSelectedStyles(this, newSelected);
+            currentGridFields[tileIndex].checked = newSelected;
+
+            try {
+                await saveBingoGrid(currentUsername, currentGridFields);
+            } catch (err) {
+                console.error(err);
+                currentGridFields[tileIndex].checked = wasSelected;
+                applyTileSelectedStyles(this, wasSelected);
+                alert('Erreur lors de la sauvegarde de la case.');
             }
         };
 
