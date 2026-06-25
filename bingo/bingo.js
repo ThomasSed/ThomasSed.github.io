@@ -1,10 +1,20 @@
+let currentParsedFields = [];
+
 const bingoHTML = `
     <div style="display: flex; justify-content: flex-end; padding: 16px;">
         <button onclick="openAdminModal()" style="background: #1a73e8; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-family: 'Google Sans', sans-serif; font-weight: 500; display: flex; align-items: center; gap: 8px; transition: background 0.2s;" onmouseover="this.style.background='#1557b0'" onmouseout="this.style.background='#1a73e8'"><span class="material-symbols-outlined" style="font-size: 20px;">settings</span>Admin</button>
     </div>
-    <div id="bingo-container" style="text-align: center; padding: 20px; color: #5f6368;">
-        <h2>Bingo</h2>
-        <p>Page en construction...</p>
+    <div id="bingo-container" style="text-align: center; padding: 20px; color: #5f6368; display: flex; flex-direction: column; align-items: center;">
+        <h2 style="font-family: 'Google Sans', sans-serif; color: #202124; margin-top: 0;">Bingo</h2>
+        
+        <div style="margin-top: 32px; display: inline-flex; align-items: center; gap: 12px; background: white; padding: 16px 24px; border-radius: 8px; box-shadow: 0 1px 3px rgba(60,64,67,0.1); border: 1px solid #dadce0;">
+            <label for="qui-select" style="font-size: 16px; font-weight: 500; color: #202124;">Qui :</label>
+            <select id="qui-select" style="padding: 8px 16px; font-size: 16px; font-family: 'Google Sans', sans-serif; border: 1px solid #dadce0; border-radius: 6px; outline: none; background: #f8f9fa; color: #202124; cursor: pointer; min-width: 200px; transition: border-color 0.2s;" onfocus="this.style.borderColor='#1a73e8'" onblur="this.style.borderColor='#dadce0'" onchange="handleQuiChange(event)">
+                <option value="">Choisir</option>
+                <option value="thomas">Thomas</option>
+            </select>
+        </div>
+        <div id="main-bingo-grid" style="margin-top: 32px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; width: 100%; max-width: 900px;"></div>
     </div>
 
     <!-- Admin Modal -->
@@ -30,10 +40,26 @@ const bingoHTML = `
                 <!-- Preview Grid -->
                 <div>
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-                        <h3 style="margin: 0; font-family: 'Google Sans', sans-serif; font-size: 18px; color: #202124;">Aperçu des données</h3>
-                        <button onclick="createBingoSheets()" style="background: #34A853; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-family: 'Google Sans', sans-serif; font-weight: 500; display: flex; align-items: center; gap: 8px; transition: background 0.2s;" onmouseover="this.style.background='#2d9047'" onmouseout="this.style.background='#34A853'"><span class="material-symbols-outlined" style="font-size: 20px;">print</span>Créer les feuilles de bingo</button>
+                        <div style="display: flex; align-items: center; gap: 16px;">
+                            <h3 style="margin: 0; font-family: 'Google Sans', sans-serif; font-size: 18px; color: #202124;">Aperçu des données</h3>
+                            <label style="display: flex; align-items: center; cursor: pointer; gap: 8px;">
+                                <div style="position: relative; width: 36px; height: 20px;">
+                                    <input type="checkbox" id="toggle-preview" style="opacity: 0; width: 0; height: 0; position: absolute;" onchange="togglePreviewGrid()">
+                                    <span id="toggle-slider" style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .3s; border-radius: 20px;"></span>
+                                    <span id="toggle-knob" style="position: absolute; height: 16px; width: 16px; left: 2px; bottom: 2px; background-color: white; transition: .3s; border-radius: 50%; pointer-events: none; box-shadow: 0 1px 3px rgba(0,0,0,0.2);"></span>
+                                </div>
+                                <span style="font-size: 14px; color: #5f6368;">Afficher</span>
+                            </label>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <select id="admin-qui-select" style="padding: 8px 12px; font-size: 14px; font-family: 'Google Sans', sans-serif; border: 1px solid #dadce0; border-radius: 6px; outline: none; background: #ffffff; color: #202124; cursor: pointer; transition: border-color 0.2s;" onfocus="this.style.borderColor='#1a73e8'" onblur="this.style.borderColor='#dadce0'" onchange="document.getElementById('create-bingo-btn').disabled = !this.value; document.getElementById('create-bingo-btn').style.opacity = this.value ? '1' : '0.5'; document.getElementById('create-bingo-btn').style.cursor = this.value ? 'pointer' : 'not-allowed';">
+                                <option value="">Pour qui ?</option>
+                                <option value="thomas">Thomas</option>
+                            </select>
+                            <button id="create-bingo-btn" onclick="createBingoSheets()" disabled style="background: #34A853; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: not-allowed; opacity: 0.5; font-family: 'Google Sans', sans-serif; font-weight: 500; display: flex; align-items: center; gap: 8px; transition: background 0.2s, opacity 0.2s; white-space: nowrap;" onmouseover="if(!this.disabled) this.style.background='#2d9047'" onmouseout="if(!this.disabled) this.style.background='#34A853'"><span class="material-symbols-outlined" style="font-size: 20px;">print</span>Créer la feuille</button>
+                        </div>
                     </div>
-                    <div id="bingo-preview-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: #dadce0; border: 1px solid #dadce0; border-radius: 6px; overflow: hidden;">
+                    <div id="bingo-preview-grid" style="display: none; grid-template-columns: repeat(4, 1fr); gap: 1px; background: #dadce0; border: 1px solid #dadce0; border-radius: 6px; overflow: hidden;">
                         <!-- Les champs seront injectés ici -->
                         <div style="grid-column: 1 / -1; text-align: center; color: #9aa0a6; padding: 40px; background: #ffffff;">
                             Aucune donnée chargée.
@@ -61,8 +87,80 @@ window.closeAdminModal = function() {
     document.getElementById('admin-modal-overlay').style.display = 'none';
 }
 
-window.createBingoSheets = function() {
-    alert("Fonctionnalité de création de feuilles de bingo à venir !");
+window.createBingoSheets = async function() {
+    const selectedPerson = document.getElementById('admin-qui-select').value;
+    if (!selectedPerson) return;
+
+    if (currentParsedFields.length === 0) {
+        alert("Veuillez d'abord charger un fichier CSV avec des données.");
+        return;
+    }
+
+    const btn = document.getElementById('create-bingo-btn');
+    const originalContent = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="material-symbols-outlined" style="font-size: 20px; animation: spin 2s linear infinite;">sync</span>Enregistrement...';
+
+    try {
+        const payload = {
+            username: selectedPerson,
+            grid: currentParsedFields
+        };
+
+        const apiUrl = 'https://zhwlknt3qg.execute-api.eu-north-1.amazonaws.com/default/crud-bingo';
+
+        // Try POST first
+        let res = await fetch(apiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (res.status === 409) {
+            // Already exists, try PUT
+            res = await fetch(apiUrl, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+        }
+
+        if (!res.ok) {
+            throw new Error("Erreur de l'API (" + res.status + ")");
+        }
+
+        alert("Données enregistrées avec succès pour " + selectedPerson + " !");
+        
+        // Refresh grid if this person is currently selected
+        const mainSelect = document.getElementById('qui-select');
+        if (mainSelect && mainSelect.value === selectedPerson) {
+            handleQuiChange({ target: { value: selectedPerson } });
+        }
+        
+        closeAdminModal();
+    } catch (err) {
+        console.error(err);
+        alert("Erreur lors de la sauvegarde de la grille.");
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalContent;
+    }
+}
+
+window.togglePreviewGrid = function() {
+    const grid = document.getElementById('bingo-preview-grid');
+    const checkbox = document.getElementById('toggle-preview');
+    const slider = document.getElementById('toggle-slider');
+    const knob = document.getElementById('toggle-knob');
+    if (checkbox.checked) {
+        grid.style.display = 'grid';
+        slider.style.backgroundColor = '#1a73e8';
+        knob.style.transform = 'translateX(16px)';
+    } else {
+        grid.style.display = 'none';
+        slider.style.backgroundColor = '#ccc';
+        knob.style.transform = 'translateX(0)';
+    }
 }
 
 // CSV Parsing Logic for Bingo
@@ -102,11 +200,10 @@ function parseCSV(text) {
         const line = lines[i].trim();
         if (!line) continue;
         
-        // Simple CSV split (assuming no quotes with commas inside for now)
+        // Simple CSV split
         const values = line.split(','); 
-        if (values.length < 2) continue; // Needs at least Horodateur
+        if (values.length < 2) continue;
 
-        // Pairs start at index 1
         for (let j = 1; j < values.length; j += 2) {
             const qui = values[j] ? values[j].trim() : '';
             const quoi = values[j+1] ? values[j+1].trim() : '';
@@ -117,12 +214,13 @@ function parseCSV(text) {
         }
     }
 
+    currentParsedFields = fields;
     renderBingoPreview(fields);
 }
 
 function renderBingoPreview(fields) {
     const grid = document.getElementById('bingo-preview-grid');
-    grid.innerHTML = ''; // clear
+    grid.innerHTML = ''; 
 
     if (fields.length === 0) {
         grid.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; color: #9aa0a6; padding: 40px; background: #ffffff;">Aucune donnée valide trouvée.</div>';
@@ -157,5 +255,118 @@ function renderBingoPreview(fields) {
         div.appendChild(quiEl);
         div.appendChild(quoiEl);
         grid.appendChild(div);
+    });
+}
+
+// Main View API Logic
+window.handleQuiChange = function(event) {
+    const username = event.target.value;
+    const container = document.getElementById('main-bingo-grid');
+    
+    if (username) {
+        fetchBingoGrid(username, container);
+    } else {
+        if (container) container.innerHTML = '';
+    }
+}
+
+window.fetchBingoGrid = async function(username, container) {
+    if (!container) container = document.getElementById('main-bingo-grid');
+    if (!container) return;
+
+    container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: #5f6368; padding: 40px;"><span class="material-symbols-outlined" style="animation: spin 2s linear infinite; display: block; margin-bottom: 12px; font-size: 32px;">sync</span> Chargement de la grille...</div>';
+    
+    try {
+        const res = await fetch('https://zhwlknt3qg.execute-api.eu-north-1.amazonaws.com/default/crud-bingo?username=' + encodeURIComponent(username));
+        
+        if (res.status === 404) {
+            container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: #5f6368; padding: 40px; background: white; border-radius: 8px; border: 1px solid #dadce0;">Aucune grille trouvée pour ' + username + '</div>';
+            return;
+        }
+        
+        if (!res.ok) {
+            throw new Error('Erreur API');
+        }
+        
+        const data = await res.json();
+        const fields = data.grid || [];
+        renderMainBingoGrid(fields, container);
+    } catch (err) {
+        console.error(err);
+        container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: #c5221f; padding: 40px; background: #fce8e6; border-radius: 8px; border: 1px solid #fad2cf;">Erreur lors du chargement de la grille.</div>';
+    }
+}
+
+window.renderMainBingoGrid = function(fields, container) {
+    container.innerHTML = '';
+    
+    if (fields.length === 0) {
+        container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: #5f6368; padding: 40px; background: white; border-radius: 8px; border: 1px solid #dadce0;">La grille est vide.</div>';
+        return;
+    }
+    
+    fields.forEach(field => {
+        const div = document.createElement('div');
+        div.style.background = 'white';
+        div.style.border = '1px solid #dadce0';
+        div.style.borderRadius = '8px';
+        div.style.padding = '16px';
+        div.style.display = 'flex';
+        div.style.flexDirection = 'column';
+        div.style.alignItems = 'center';
+        div.style.justifyContent = 'center';
+        div.style.textAlign = 'center';
+        div.style.gap = '8px';
+        div.style.minHeight = '120px';
+        div.style.cursor = 'pointer';
+        div.style.transition = 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)';
+        div.style.boxShadow = '0 1px 2px rgba(60,64,67,0.1)';
+        
+        // Hover effects
+        div.onmouseover = function() { 
+            if (this.dataset.selected !== 'true') {
+                this.style.boxShadow = '0 4px 8px rgba(60,64,67,0.15)'; 
+                this.style.transform = 'translateY(-2px)'; 
+            }
+        };
+        div.onmouseout = function() { 
+            if (this.dataset.selected !== 'true') {
+                this.style.boxShadow = '0 1px 2px rgba(60,64,67,0.1)'; 
+                this.style.transform = 'translateY(0)'; 
+            }
+        };
+        
+        // Click interaction (toggle selected state)
+        div.onclick = function() {
+            if (this.dataset.selected === 'true') {
+                this.dataset.selected = 'false';
+                this.style.background = 'white';
+                this.style.borderColor = '#dadce0';
+                this.style.transform = 'translateY(0)';
+                this.style.boxShadow = '0 1px 2px rgba(60,64,67,0.1)';
+            } else {
+                this.dataset.selected = 'true';
+                this.style.background = '#e6f4ea'; // Google green light
+                this.style.borderColor = '#34A853'; // Google green
+                this.style.transform = 'scale(0.98)';
+                this.style.boxShadow = 'inset 0 2px 4px rgba(0,0,0,0.1)';
+            }
+        };
+
+        const quiEl = document.createElement('div');
+        quiEl.style.fontSize = '18px';
+        quiEl.style.fontWeight = '500';
+        quiEl.style.color = '#202124';
+        quiEl.textContent = field.qui || '-';
+
+        const quoiEl = document.createElement('div');
+        quoiEl.style.fontSize = '14px';
+        quoiEl.style.color = '#5f6368';
+        quoiEl.style.lineHeight = '1.4';
+        quoiEl.textContent = field.quoi || '-';
+
+        div.appendChild(quiEl);
+        div.appendChild(quoiEl);
+        container.appendChild(div);
     });
 }
