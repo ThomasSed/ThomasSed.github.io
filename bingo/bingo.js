@@ -107,7 +107,7 @@ window.createBingoSheets = async function() {
             grid: currentParsedFields
         };
 
-        const apiUrl = 'https://zhwlknt3qg.execute-api.eu-north-1.amazonaws.com/default/crud-bingo';
+        const apiUrl = 'https://tc3q8oigfk.execute-api.eu-north-1.amazonaws.com/default/crud-bingo';
 
         // Use POST with text/plain to completely bypass the browser's CORS preflight (OPTIONS) request
         let res = await fetch(apiUrl, {
@@ -269,7 +269,7 @@ window.fetchBingoGrid = async function(username, container) {
     container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: #5f6368; padding: 40px;"><span class="material-symbols-outlined" style="animation: spin 2s linear infinite; display: block; margin-bottom: 12px; font-size: 32px;">sync</span> Chargement de la grille...</div>';
     
     try {
-        const res = await fetch('https://zhwlknt3qg.execute-api.eu-north-1.amazonaws.com/default/crud-bingo?username=' + encodeURIComponent(username));
+        const res = await fetch('https://tc3q8oigfk.execute-api.eu-north-1.amazonaws.com/default/crud-bingo?username=' + encodeURIComponent(username));
         
         if (res.status === 404) {
             container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: #5f6368; padding: 40px; background: white; border-radius: 8px; border: 1px solid #dadce0;">Aucune grille trouvée pour ' + username + '</div>';
