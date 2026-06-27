@@ -7,37 +7,27 @@ const docClient = DynamoDBDocumentClient.from(client);
 const TABLE_NAME = process.env.TABLE_NAME || "BingoGrids";
 
 export const handler = async (event) => {
-    console.log("=== INCOMING EVENT ===");
-    console.log("Full event:", JSON.stringify(event, null, 2));
-
     try {
         const method = event.requestContext?.http?.method || event.httpMethod;
-        console.log("Resolved HTTP method:", method);
-        console.log("Table name:", TABLE_NAME);
 
         let response;
         switch (method) {
             case "POST":
-                response = await createGrid(event);
+                response = await handlePost(event);
                 break;
             case "GET":
                 response = await getGrid(event);
                 break;
             default:
-                console.log("Unknown method, returning 405");
                 response = {
                     statusCode: 405,
-                    body: JSON.stringify({ message: "Method Not Allowed", receivedMethod: method, eventKeys: Object.keys(event) }),
+                    body: JSON.stringify({ message: "Method Not Allowed" }),
                 };
         }
 
-        console.log("=== RESPONSE ===", JSON.stringify(response));
         return response;
     } catch (error) {
-        console.error("=== UNHANDLED ERROR ===");
-        console.error("Error name:", error.name);
-        console.error("Error message:", error.message);
-        console.error("Full error:", JSON.stringify(error, null, 2));
+        console.error("Error:", error);
         return {
             statusCode: 500,
             body: JSON.stringify({ message: "Internal Server Error", error: error.message }),
@@ -45,73 +35,134 @@ export const handler = async (event) => {
     }
 };
 
-const createGrid = async (event) => {
-    console.log("=== CREATE GRID ===");
-    console.log("Raw body:", event.body);
-
-    const data = JSON.parse(event.body);
-    console.log("Parsed data:", JSON.stringify(data));
-
-    const { username, grid } = data;
-    console.log("Username:", username, "| Grid items count:", grid?.length);
-
-    if (!username || !grid) {
-        console.log("Validation failed: missing username or grid");
-        return { statusCode: 400, body: JSON.stringify({ message: "Missing username or grid" }) };
+const handlePost = async (event) => {
+    if (!event.body) {
+        return { statusCode: 400, body: JSON.stringify({ message: "Missing request body" }) };
     }
 
-    const item = {
-        user: username,
-        grid,
-        updatedAt: new Date().toISOString(),
-    };
-    console.log("DynamoDB PutCommand item:", JSON.stringify(item));
+    const data = JSON.parse(event.body);
 
-    const command = new PutCommand({
-        TableName: TABLE_NAME,
-        Item: item,
-    });
+    if (data.action === "verify") {
+        return verifyPassword(data);
+    }
 
-    const result = await docClient.send(command);
-    console.log("DynamoDB PutCommand result:", JSON.stringify(result));
+    return saveGrid(data);
+};
+
+const verifyPassword = async ({ username, password }) => {
+    if (!username || !password) {
+        return { statusCode: 400, body: JSON.stringify({ message: "Missing username or password" }) };
+    }
+
+    const item = await fetchUserItem(username);
+    if (!item) {
+        return { statusCode: 404, body: JSON.stringify({ message: "User not found" }) };
+    }
+
+    if (!item.password) {
+        return { statusCode: 403, body: JSON.stringify({ message: "No password configured for this user" }) };
+    }
+
+    if (item.password !== password) {
+        return { statusCode: 401, body: JSON.stringify({ message: "Invalid password" }) };
+    }
 
     return {
-        statusCode: 201,
-        body: JSON.stringify({ message: "Bingo grid saved successfully" }),
+        statusCode: 200,
+        body: JSON.stringify({ message: "Password verified" }),
     };
 };
 
-const getGrid = async (event) => {
-    console.log("=== GET GRID ===");
-    console.log("queryStringParameters:", JSON.stringify(event.queryStringParameters));
-
-    const username = event.queryStringParameters?.username;
-    console.log("Username extracted:", username);
-
-    if (!username) {
-        console.log("Validation failed: missing username");
-        return { statusCode: 400, body: JSON.stringify({ message: "Missing username" }) };
+const saveGrid = async ({ username, grid, password }) => {
+    if (!username || !grid) {
+        return { statusCode: 400, body: JSON.stringify({ message: "Missing username or grid" }) };
     }
 
-    const key = { user: username };
-    console.log("DynamoDB GetCommand key:", JSON.stringify(key));
+    const existing = await fetchUserItem(username);
 
-    const command = new GetCommand({
-        TableName: TABLE_NAME,
-        Key: key,
-    });
+    if (password) {
+        if (!existing) {
+            return { statusCode: 404, body: JSON.stringify({ message: "User not found" }) };
+        }
+        if (!existing.password) {
+            return { statusCode: 403, body: JSON.stringify({ message: "No password configured for this user" }) };
+        }
+        if (existing.password !== password) {
+            return { statusCode: 401, body: JSON.stringify({ message: "Invalid password" }) };
+        }
 
-    const result = await docClient.send(command);
-    console.log("DynamoDB GetCommand result:", JSON.stringify(result));
+        const item = {
+            user: username,
+            grid,
+            password: existing.password,
+            updatedAt: new Date().toISOString(),
+        };
 
-    if (!result.Item) {
-        console.log("No item found for user:", username);
+        await docClient.send(new PutCommand({ TableName: TABLE_NAME, Item: item }));
+
+        return {
+            statusCode: 200,
+            body: JSON.stringify({ message: "Bingo grid updated successfully" }),
+        };
+    }
+
+    // No password: only allow updating checked state on existing grid
+    if (!existing) {
         return { statusCode: 404, body: JSON.stringify({ message: "Bingo grid not found" }) };
     }
 
-    console.log("Item found, returning grid with", result.Item.grid?.length, "items");
+    const existingGrid = existing.grid || [];
+    if (grid.length !== existingGrid.length) {
+        return { statusCode: 403, body: JSON.stringify({ message: "Password required to modify grid content" }) };
+    }
+
+    const mergedGrid = existingGrid.map((tile, i) => ({
+        qui: tile.qui,
+        quoi: tile.quoi,
+        checked: !!grid[i]?.checked,
+    }));
+
+    await docClient.send(new PutCommand({
+        TableName: TABLE_NAME,
+        Item: {
+            user: username,
+            grid: mergedGrid,
+            password: existing.password,
+            updatedAt: new Date().toISOString(),
+        },
+    }));
+
     return {
         statusCode: 200,
-        body: JSON.stringify(result.Item),
+        body: JSON.stringify({ message: "Checked state saved" }),
+    };
+};
+
+const fetchUserItem = async (username) => {
+    const result = await docClient.send(new GetCommand({
+        TableName: TABLE_NAME,
+        Key: { user: username },
+    }));
+    return result.Item || null;
+};
+
+const getGrid = async (event) => {
+    const username = event.queryStringParameters?.username;
+
+    if (!username) {
+        return { statusCode: 400, body: JSON.stringify({ message: "Missing username" }) };
+    }
+
+    const item = await fetchUserItem(username);
+
+    if (!item) {
+        return { statusCode: 404, body: JSON.stringify({ message: "Bingo grid not found" }) };
+    }
+
+    const { password, ...safeItem } = item;
+
+    return {
+        statusCode: 200,
+        body: JSON.stringify(safeItem),
     };
 };
