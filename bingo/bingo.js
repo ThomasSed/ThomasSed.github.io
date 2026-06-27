@@ -14,13 +14,17 @@ const bingoHTML = `
     <div id="bingo-container" style="text-align: center; padding: 20px; color: #5f6368; display: flex; flex-direction: column; align-items: center;">
         <h2 style="font-family: 'Google Sans', sans-serif; color: #202124; margin-top: 0;">Bingo</h2>
         
-        <div style="margin-top: 32px; display: inline-flex; align-items: center; gap: 12px; background: white; padding: 16px 24px; border-radius: 8px; box-shadow: 0 1px 3px rgba(60,64,67,0.1); border: 1px solid #dadce0;">
+        <div style="margin-top: 32px; display: inline-flex; flex-wrap: wrap; align-items: center; gap: 12px; background: white; padding: 16px 24px; border-radius: 8px; box-shadow: 0 1px 3px rgba(60,64,67,0.1); border: 1px solid #dadce0;">
             <label for="qui-select" style="font-size: 16px; font-weight: 500; color: #202124;">Qui :</label>
-            <select id="qui-select" style="padding: 8px 16px; font-size: 16px; font-family: 'Google Sans', sans-serif; border: 1px solid #dadce0; border-radius: 6px; outline: none; background: #f8f9fa; color: #202124; cursor: pointer; min-width: 200px; transition: border-color 0.2s;" onfocus="this.style.borderColor='#1a73e8'" onblur="this.style.borderColor='#dadce0'" onchange="handleQuiChange(event)">
+            <select id="qui-select" style="padding: 8px 16px; font-size: 16px; font-family: 'Google Sans', sans-serif; border: 1px solid #dadce0; border-radius: 6px; outline: none; background: #f8f9fa; color: #202124; cursor: pointer; min-width: 200px; transition: border-color 0.2s;" onfocus="this.style.borderColor='#1a73e8'" onblur="this.style.borderColor='#dadce0'" onchange="handleMainUserChange()">
                 <option value="">Choisir</option>
-                <option value="thomas">Thomas</option>
             </select>
+            <input type="password" id="main-password" placeholder="Mot de passe" style="padding: 8px 16px; font-size: 16px; font-family: 'Google Sans', sans-serif; border: 1px solid #dadce0; border-radius: 6px; outline: none; background: #f8f9fa; color: #202124; min-width: 180px;" onkeydown="if(event.key==='Enter') unlockMainGrid()">
+            <button id="unlock-main-btn" onclick="unlockMainGrid()" style="background: #1a73e8; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-family: 'Google Sans', sans-serif; font-weight: 500; display: flex; align-items: center; gap: 8px;">
+                <span class="material-symbols-outlined" style="font-size: 20px;">lock_open</span>Accéder
+            </button>
         </div>
+        <div id="main-access-message" style="margin-top: 12px; color: #5f6368; font-size: 14px;"></div>
         <div id="main-bingo-grid" style="margin-top: 32px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; width: 100%; max-width: 900px;"></div>
     </div>
 
@@ -41,7 +45,6 @@ const bingoHTML = `
                     <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 16px;">
                         <select id="edit-qui-select" style="padding: 8px 12px; font-size: 14px; font-family: 'Google Sans', sans-serif; border: 1px solid #dadce0; border-radius: 6px; outline: none; background: #ffffff; color: #202124; cursor: pointer; min-width: 160px;" onchange="handleAdminEditUserChange()">
                             <option value="">Pour qui ?</option>
-                            <option value="thomas">Thomas</option>
                         </select>
                         <input type="password" id="admin-password" placeholder="Mot de passe" style="padding: 8px 12px; font-size: 14px; font-family: 'Google Sans', sans-serif; border: 1px solid #dadce0; border-radius: 6px; outline: none; background: #ffffff; color: #202124; min-width: 180px;" onkeydown="if(event.key==='Enter') unlockAdminGrid()">
                         <button id="unlock-admin-btn" onclick="unlockAdminGrid()" style="background: #1a73e8; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-family: 'Google Sans', sans-serif; font-weight: 500; display: flex; align-items: center; gap: 8px;">
@@ -95,7 +98,6 @@ const bingoHTML = `
                         <div style="display: flex; align-items: center; gap: 12px;">
                             <select id="admin-qui-select" style="padding: 8px 12px; font-size: 14px; font-family: 'Google Sans', sans-serif; border: 1px solid #dadce0; border-radius: 6px; outline: none; background: #ffffff; color: #202124; cursor: pointer; transition: border-color 0.2s;" onfocus="this.style.borderColor='#1a73e8'" onblur="this.style.borderColor='#dadce0'" onchange="document.getElementById('create-bingo-btn').disabled = !this.value; document.getElementById('create-bingo-btn').style.opacity = this.value ? '1' : '0.5'; document.getElementById('create-bingo-btn').style.cursor = this.value ? 'pointer' : 'not-allowed';">
                                 <option value="">Pour qui ?</option>
-                                <option value="thomas">Thomas</option>
                             </select>
                             <input type="password" id="create-password" placeholder="Mot de passe" style="padding: 8px 12px; font-size: 14px; font-family: 'Google Sans', sans-serif; border: 1px solid #dadce0; border-radius: 6px; outline: none; background: #ffffff; color: #202124; min-width: 160px;">
                             <button id="create-bingo-btn" onclick="createBingoSheets()" disabled style="background: #34A853; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: not-allowed; opacity: 0.5; font-family: 'Google Sans', sans-serif; font-weight: 500; display: flex; align-items: center; gap: 8px; transition: background 0.2s, opacity 0.2s; white-space: nowrap;" onmouseover="if(!this.disabled) this.style.background='#2d9047'" onmouseout="if(!this.disabled) this.style.background='#34A853'"><span class="material-symbols-outlined" style="font-size: 20px;">print</span>Créer la feuille</button>
@@ -118,12 +120,56 @@ document.addEventListener('DOMContentLoaded', () => {
     const bingoApp = document.getElementById('bingo-app');
     if (bingoApp) {
         bingoApp.innerHTML = bingoHTML;
+        loadUsers();
     }
 });
+
+function formatUserLabel(username) {
+    if (!username) return '';
+    return username.charAt(0).toUpperCase() + username.slice(1);
+}
+
+function populateUserSelects(users) {
+    const configs = [
+        { id: 'qui-select', placeholder: 'Choisir' },
+        { id: 'edit-qui-select', placeholder: 'Pour qui ?' },
+        { id: 'admin-qui-select', placeholder: 'Pour qui ?' },
+    ];
+
+    configs.forEach(({ id, placeholder }) => {
+        const select = document.getElementById(id);
+        if (!select) return;
+
+        const currentValue = select.value;
+        select.innerHTML = `<option value="">${placeholder}</option>`;
+        users.forEach((user) => {
+            const option = document.createElement('option');
+            option.value = user;
+            option.textContent = formatUserLabel(user);
+            select.appendChild(option);
+        });
+
+        if (users.includes(currentValue)) {
+            select.value = currentValue;
+        }
+    });
+}
+
+async function loadUsers() {
+    try {
+        const res = await fetch(BINGO_API_URL);
+        if (!res.ok) throw new Error('Failed to load users');
+        const data = await res.json();
+        populateUserSelects(data.users || []);
+    } catch (err) {
+        console.error('Error loading users:', err);
+    }
+}
 
 // Admin Modal Logic
 window.openAdminModal = function() {
     document.getElementById('admin-modal-overlay').style.display = 'flex';
+    loadUsers();
 }
 
 window.closeAdminModal = function() {
@@ -314,9 +360,11 @@ window.saveAdminGrid = async function() {
 
         alert('Grille enregistrée avec succès pour ' + adminEditUsername + ' !');
 
+        await loadUsers();
+
         const mainSelect = document.getElementById('qui-select');
-        if (mainSelect && mainSelect.value === adminEditUsername) {
-            handleQuiChange({ target: { value: adminEditUsername } });
+        if (mainSelect && mainSelect.value === adminEditUsername && currentUsername === adminEditUsername) {
+            await fetchBingoGrid(adminEditUsername, document.getElementById('main-bingo-grid'));
         }
     } catch (err) {
         console.error(err);
@@ -370,12 +418,14 @@ window.createBingoSheets = async function() {
         }
 
         alert("Données enregistrées avec succès pour " + selectedPerson + " !");
-        
+
+        await loadUsers();
+
         const mainSelect = document.getElementById('qui-select');
-        if (mainSelect && mainSelect.value === selectedPerson) {
-            handleQuiChange({ target: { value: selectedPerson } });
+        if (mainSelect && mainSelect.value === selectedPerson && currentUsername === selectedPerson) {
+            await fetchBingoGrid(selectedPerson, document.getElementById('main-bingo-grid'));
         }
-        
+
         closeAdminModal();
     } catch (err) {
         console.error(err);
@@ -525,16 +575,72 @@ async function saveBingoGrid(username, grid) {
 }
 
 // Main View API Logic
-window.handleQuiChange = function(event) {
-    const username = event.target.value;
+window.handleMainUserChange = function() {
+    currentUsername = '';
+    currentGridFields = [];
     const container = document.getElementById('main-bingo-grid');
-    
-    if (username) {
-        fetchBingoGrid(username, container);
-    } else {
+    const messageEl = document.getElementById('main-access-message');
+    if (container) container.innerHTML = '';
+    if (messageEl) {
+        messageEl.style.color = '#5f6368';
+        messageEl.textContent = '';
+    }
+}
+
+window.unlockMainGrid = async function() {
+    const username = document.getElementById('qui-select').value;
+    const password = document.getElementById('main-password').value;
+    const btn = document.getElementById('unlock-main-btn');
+    const messageEl = document.getElementById('main-access-message');
+    const container = document.getElementById('main-bingo-grid');
+
+    if (!username) {
+        alert('Veuillez sélectionner un utilisateur.');
+        return;
+    }
+    if (!password) {
+        alert('Veuillez entrer le mot de passe.');
+        return;
+    }
+
+    const originalContent = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="material-symbols-outlined" style="font-size: 20px; animation: spin 2s linear infinite;">sync</span>Vérification...';
+
+    try {
+        const verifyRes = await fetch(BINGO_API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain' },
+            body: JSON.stringify({ action: 'verify', username, password })
+        });
+
+        if (verifyRes.status === 401) {
+            messageEl.style.color = '#c5221f';
+            messageEl.textContent = 'Mot de passe incorrect.';
+            currentUsername = '';
+            currentGridFields = [];
+            if (container) container.innerHTML = '';
+            return;
+        }
+
+        if (!verifyRes.ok) {
+            const err = await verifyRes.json().catch(() => ({}));
+            throw new Error(err.message || 'Erreur de vérification');
+        }
+
+        messageEl.style.color = '#5f6368';
+        messageEl.textContent = '';
+        await fetchBingoGrid(username, container);
+    } catch (err) {
+        console.error(err);
+        messageEl.style.color = '#c5221f';
+        messageEl.textContent = 'Erreur lors de la vérification.';
         currentUsername = '';
         currentGridFields = [];
         if (container) container.innerHTML = '';
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalContent;
     }
 }
 

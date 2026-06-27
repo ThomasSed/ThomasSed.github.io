@@ -1,5 +1,5 @@
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { DynamoDBDocumentClient, PutCommand, GetCommand } from "@aws-sdk/lib-dynamodb";
+import { DynamoDBDocumentClient, PutCommand, GetCommand, ScanCommand } from "@aws-sdk/lib-dynamodb";
 
 const client = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(client);
@@ -146,11 +146,29 @@ const fetchUserItem = async (username) => {
     return result.Item || null;
 };
 
+const listUsers = async () => {
+    const result = await docClient.send(new ScanCommand({
+        TableName: TABLE_NAME,
+        ProjectionExpression: "#u",
+        ExpressionAttributeNames: { "#u": "user" },
+    }));
+
+    const users = (result.Items || [])
+        .map((item) => item.user)
+        .filter(Boolean)
+        .sort((a, b) => a.localeCompare(b, "fr", { sensitivity: "base" }));
+
+    return {
+        statusCode: 200,
+        body: JSON.stringify({ users }),
+    };
+};
+
 const getGrid = async (event) => {
     const username = event.queryStringParameters?.username;
 
     if (!username) {
-        return { statusCode: 400, body: JSON.stringify({ message: "Missing username" }) };
+        return listUsers();
     }
 
     const item = await fetchUserItem(username);
