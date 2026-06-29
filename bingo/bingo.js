@@ -25,7 +25,7 @@ const bingoHTML = `
             </button>
         </div>
         <div id="main-access-message" style="margin-top: 12px; color: #5f6368; font-size: 14px;"></div>
-        <div id="main-bingo-grid" style="margin-top: 32px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; width: 100%; max-width: 900px;"></div>
+        <div id="main-bingo-grid" style="margin-top: 32px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; width: 100%; max-width: 900px;"></div>
     </div>
 
     <!-- Admin Modal -->
@@ -52,7 +52,7 @@ const bingoHTML = `
                         </button>
                     </div>
                     <div id="admin-edit-section" style="display: none;">
-                        <div id="admin-edit-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px;"></div>
+                        <div id="admin-edit-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px;"></div>
                         <div style="display: flex; justify-content: flex-end;">
                             <button id="save-admin-grid-btn" onclick="saveAdminGrid()" style="background: #34A853; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-family: 'Google Sans', sans-serif; font-weight: 500; display: flex; align-items: center; gap: 8px;">
                                 <span class="material-symbols-outlined" style="font-size: 20px;">save</span>Enregistrer la grille
@@ -103,7 +103,7 @@ const bingoHTML = `
                             <button id="create-bingo-btn" onclick="createBingoSheets()" disabled style="background: #34A853; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: not-allowed; opacity: 0.5; font-family: 'Google Sans', sans-serif; font-weight: 500; display: flex; align-items: center; gap: 8px; transition: background 0.2s, opacity 0.2s; white-space: nowrap;" onmouseover="if(!this.disabled) this.style.background='#2d9047'" onmouseout="if(!this.disabled) this.style.background='#34A853'"><span class="material-symbols-outlined" style="font-size: 20px;">print</span>Créer la feuille</button>
                         </div>
                     </div>
-                    <div id="bingo-preview-grid" style="display: none; grid-template-columns: repeat(4, 1fr); gap: 1px; background: #dadce0; border: 1px solid #dadce0; border-radius: 6px; overflow: hidden;">
+                    <div id="bingo-preview-grid" style="display: none; grid-template-columns: repeat(3, 1fr); gap: 1px; background: #dadce0; border: 1px solid #dadce0; border-radius: 6px; overflow: hidden;">
                         <!-- Les champs seront injectés ici -->
                         <div style="grid-column: 1 / -1; text-align: center; color: #9aa0a6; padding: 40px; background: #ffffff;">
                             Aucune donnée chargée.
