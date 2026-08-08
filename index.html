@@ -205,6 +205,32 @@
             overflow-x: auto;
         }
 
+        .air-quality {
+            border-top: 8px solid #f8f9fa;
+        }
+
+        .air-quality-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 16px 20px;
+            border-bottom: 1px solid #f1f3f4;
+        }
+
+        .air-quality-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-family: 'Google Sans', sans-serif;
+            font-size: 17px;
+            font-weight: 500;
+        }
+
+        .air-quality-title .material-symbols-outlined {
+            color: #1a73e8;
+        }
+
         table {
             width: 100%;
             border-collapse: collapse;
@@ -410,6 +436,10 @@
                 padding: 12px 16px;
             }
 
+            .air-quality-header {
+                padding: 12px 16px;
+            }
+
             th,
             td {
                 padding: 12px 16px;
@@ -606,7 +636,55 @@
             `;
         };
 
-        const createCityHtml = (title, todayKey, tomorrowKey, data) => {
+        const createAirQualityHtml = (airData) => {
+            const today = airData.today || {};
+            const tomorrow = airData.tomorrow || {};
+            const details = today._details || {};
+            const pollutants = ["PM2,5", "PM10", "NO₂", "O₃", "SO₂"];
+            const globalLevel = today["qualité globale"];
+            const globalHtml = globalLevel !== undefined
+                ? `<span class="${levelClass(globalLevel)}">${details["qualité"] || `Niveau ${globalLevel}`}</span>`
+                : `<span class="empty-dash">-</span>`;
+
+            return `
+                <section class="air-quality" aria-label="Qualité de l'air">
+                    <div class="air-quality-header">
+                        <div class="air-quality-title">
+                            <span class="material-symbols-outlined">air</span>
+                            Qualité de l'air
+                        </div>
+                        ${globalHtml}
+                    </div>
+                    <div class="city-details">
+                        <div><strong>Source</strong>${details.source || "-"}</div>
+                        <div><strong>Mis à jour le</strong>${details["date de mise à jour"] || "-"}</div>
+                        <div><strong>Prévision pour le</strong>${details["date d'échéance"] || "-"}</div>
+                    </div>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Polluant</th>
+                                    <th>Aujourd'hui</th>
+                                    <th>Demain</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${pollutants.map(pollutant => `
+                                    <tr>
+                                        <td class="allergen-name">${pollutant}</td>
+                                        <td>${today[pollutant] === undefined ? "-" : `<span class="${levelClass(today[pollutant])}">Niveau ${today[pollutant]}</span>`}</td>
+                                        <td>${tomorrow[pollutant] === undefined ? "-" : `<span class="${levelClass(tomorrow[pollutant])}">Niveau ${tomorrow[pollutant]}</span>`}</td>
+                                    </tr>
+                                `).join("")}
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            `;
+        };
+
+        const createCityHtml = (title, todayKey, tomorrowKey, data, airData) => {
             const cityKey = title.toLowerCase();
             const today = data[todayKey] || {};
             const tomorrow = data[tomorrowKey] || {};
@@ -687,6 +765,7 @@
                             </tbody>
                         </table>
                     </div>
+                    ${createAirQualityHtml(airData || {})}
                 </div>
             `;
         };
@@ -701,8 +780,10 @@
         ];
         let searchTimeout;
         let defaultPollenData;
+        let defaultAirData;
         let additionalCity;
         let additionalPollenData;
+        let additionalAirData;
 
         const escapeHtml = (value) => String(value).replace(/[&<>'"]/g, char => ({
             "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#039;", '"': "&quot;"
@@ -717,11 +798,14 @@
 
         const renderPollen = () => {
             const baseCards = defaultPollenData
-                ? DEFAULT_CITIES.map(city => createCityHtml(city.name, city.todayKey, city.tomorrowKey, defaultPollenData)).join("")
+                ? DEFAULT_CITIES.map(city => createCityHtml(
+                    city.name, city.todayKey, city.tomorrowKey, defaultPollenData,
+                    { today: defaultAirData?.[city.todayKey], tomorrow: defaultAirData?.[city.tomorrowKey] }
+                )).join("")
                 : DEFAULT_CITIES.map(city => createCitySkeletonHtml(city.name)).join("");
             const additionalCard = additionalCity
                 ? (additionalPollenData
-                    ? createCityHtml(escapeHtml(additionalCity.name), "today", "tomorrow", additionalPollenData)
+                    ? createCityHtml(escapeHtml(additionalCity.name), "today", "tomorrow", additionalPollenData, additionalAirData)
                     : createCitySkeletonHtml(escapeHtml(additionalCity.name)))
                 : "";
             document.getElementById("result").innerHTML = `<div class="grid">${baseCards}${additionalCard}</div>`;
@@ -758,6 +842,7 @@
             showSuggestions([]);
             additionalCity = DEFAULT_CITIES.some(defaultCity => defaultCity.code === city.code) ? null : city;
             additionalPollenData = undefined;
+            additionalAirData = undefined;
             renderPollen();
             if (additionalCity) loadAdditionalPollen(additionalCity);
         };
@@ -774,7 +859,8 @@
                 return r.json();
             })
             .then(data => {
-                defaultPollenData = data;
+                defaultPollenData = data.pollen;
+                defaultAirData = data.air;
                 renderPollen();
             })
             .catch(err => {
@@ -792,7 +878,8 @@
                 })
                 .then(data => {
                     if (additionalCity && additionalCity.code === city.code) {
-                        additionalPollenData = data;
+                        additionalPollenData = data.pollen;
+                        additionalAirData = data.air;
                         renderPollen();
                     }
                 })
