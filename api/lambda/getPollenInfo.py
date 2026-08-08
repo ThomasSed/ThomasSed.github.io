@@ -30,6 +30,14 @@ codesPolluantsTranslationMapping = {
     "code_arm": "armoise",
     "code_ambr": "ambroisie",
 }
+concentrationMapping = {
+    "conc_aul": "aulne",
+    "conc_boul": "bouleau",
+    "conc_oliv": "olivier",
+    "conc_gram": "graminées",
+    "conc_arm": "armoise",
+    "conc_ambr": "ambroisie",
+}
 
 
 def response(status_code, body):
@@ -46,11 +54,29 @@ def response(status_code, body):
 def extract_pollen_info(pollen_data):
     """Extract the useful pollen indices from Atmo's GeoJSON features."""
     pollen_info = {}
+    details = {}
     for feature in pollen_data:
         properties = feature.get("properties", {})
         for code, translation in codesPolluantsTranslationMapping.items():
             if code in properties:
                 pollen_info[translation] = properties[code]
+        concentrations = {
+            translation: properties[code]
+            for code, translation in concentrationMapping.items()
+            if code in properties
+        }
+        details = {
+            "qualité": properties.get("lib_qual"),
+            "alerte": properties.get("alerte"),
+            "date de mise à jour": properties.get("date_maj"),
+            "date de diffusion": properties.get("date_dif"),
+            "date d'échéance": properties.get("date_ech"),
+            "pollens responsables": properties.get("pollen_resp"),
+            "source": properties.get("source"),
+            "concentrations": concentrations,
+        }
+    if details:
+        pollen_info["_details"] = details
     return pollen_info
 
 
