@@ -172,7 +172,9 @@
             display: flex;
             flex-direction: column;
             align-items: flex-end;
+            gap: 6px;
             font-size: 13px;
+            line-height: 1.2;
             color: #5f6368;
         }
 
@@ -706,8 +708,8 @@
 
             const globalToday = today["qualité globale"];
             const globalHtml = globalToday
-                ? `<div class="${levelClass(globalToday)}" style="margin-top: 6px;">Niveau ${globalToday}</div>`
-                : `<div class="empty-dash" style="margin-top: 6px;">-</div>`;
+                ? `<div class="${levelClass(globalToday)}">Niveau ${globalToday}</div>`
+                : `<div class="empty-dash">-</div>`;
 
             const formatDate = (value) => value
                 ? new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium", timeStyle: value.includes("T") ? "short" : undefined }).format(new Date(value))
