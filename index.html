@@ -125,7 +125,7 @@
             overflow: hidden;
             transition: box-shadow 0.2s ease-in-out, transform 0.2s ease-in-out;
             min-width: 0;
-            cursor: default;
+            cursor: pointer;
         }
 
         .city-card.focused {
@@ -907,6 +907,11 @@
         document.getElementById("city-suggestions").addEventListener("click", event => {
             const button = event.target.closest("button[data-code]");
             if (button) selectCity({ code: button.dataset.code, name: button.dataset.name });
+        });
+
+        document.getElementById("result").addEventListener("click", event => {
+            const card = event.target.closest(".city-card");
+            if (card) toggleFocus(card.dataset.city);
         });
 
         const initialCity = getAdditionalCity();
