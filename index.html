@@ -125,7 +125,7 @@
             overflow: hidden;
             transition: box-shadow 0.2s ease-in-out, transform 0.2s ease-in-out;
             min-width: 0;
-            cursor: pointer;
+            cursor: default;
         }
 
         .city-card.focused {
@@ -265,6 +265,69 @@
             margin-top: 8px;
         }
 
+        .city-picker {
+            background: #ffffff;
+            border: 1px solid #dadce0;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 20px;
+        }
+
+        .city-picker label {
+            display: block;
+            font-family: 'Google Sans', sans-serif;
+            font-size: 16px;
+            font-weight: 500;
+            margin-bottom: 10px;
+        }
+
+        .city-search-row {
+            display: flex;
+            gap: 8px;
+        }
+
+        .city-search-row input {
+            flex: 1;
+            min-width: 0;
+            border: 1px solid #dadce0;
+            border-radius: 4px;
+            padding: 10px 12px;
+            font: inherit;
+        }
+
+        .city-search-row input:focus {
+            border-color: #1a73e8;
+            outline: 2px solid #d2e3fc;
+        }
+
+        .city-search-row button,
+        .city-suggestions button {
+            border: 0;
+            border-radius: 4px;
+            background: #1a73e8;
+            color: #fff;
+            cursor: pointer;
+            font: inherit;
+            font-weight: 500;
+            padding: 10px 16px;
+        }
+
+        .city-suggestions {
+            display: grid;
+            gap: 6px;
+            margin-top: 10px;
+        }
+
+        .city-suggestions button {
+            background: #f8f9fa;
+            color: #202124;
+            text-align: left;
+        }
+
+        .city-suggestions button:hover {
+            background: #e8f0fe;
+        }
+
         .loading-state {
             display: flex;
             align-items: center;
@@ -311,6 +374,10 @@
         }
 
         @media (max-width: 600px) {
+            .city-search-row {
+                flex-direction: column;
+            }
+
             .city-header {
                 padding: 12px 16px;
             }
@@ -347,6 +414,15 @@
 
     <div id="pollen-app" class="app-container active">
         <div id="container">
+            <form class="city-picker" id="city-picker">
+                <label for="city-search">Choisir une ville</label>
+                <div class="city-search-row">
+                    <input id="city-search" type="search" autocomplete="off" placeholder="Ex. Lyon, Rennes, Bordeaux" aria-describedby="city-search-help">
+                    <button type="submit">Rechercher</button>
+                </div>
+                <div id="city-search-help" class="global-quality" style="align-items: flex-start; margin-top: 8px;">Recherchez puis choisissez votre commune.</div>
+                <div id="city-suggestions" class="city-suggestions" aria-live="polite"></div>
+            </form>
             <div id="result">
                 <!-- Initial content will be populated by JS -->
             </div>
@@ -467,7 +543,7 @@
         const createCitySkeletonHtml = (title) => {
             const cityKey = title.toLowerCase();
             return `
-                <div class="city-card" data-city="${cityKey}" onclick="toggleFocus('${cityKey}')">
+                <div class="city-card" data-city="${cityKey}">
                     <div class="city-header">
                         <div class="city-title-group">
                             <span class="material-symbols-outlined" style="color: #dadce0;">location_on</span>
@@ -526,7 +602,7 @@
                 : `<div class="empty-dash" style="margin-top: 6px;">-</div>`;
 
             return `
-                <div class="city-card" data-city="${cityKey}" onclick="toggleFocus('${cityKey}')">
+                <div class="city-card" data-city="${cityKey}">
                     <div class="city-header">
                         <div class="city-title-group">
                             <span class="material-symbols-outlined">location_on</span>
@@ -547,13 +623,19 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                ${allergenKeys.map(key => `
+                                ${allergenKeys.length ? allergenKeys.map(key => `
                                     <tr>
                                         <td class="allergen-name">${formatLabel(key)}</td>
                                         <td>${getValueHtml(today, key)}</td>
                                         <td>${getValueHtml(tomorrow, key)}</td>
                                     </tr>
-                                `).join("")}
+                                `).join("") : `
+                                    <tr>
+                                        <td colspan="3" style="text-align: center; color: #5f6368; padding: 32px 10px;">
+                                            Aucune donnée pollen disponible pour cette commune.
+                                        </td>
+                                    </tr>
+                                `}
                             </tbody>
                         </table>
                     </div>
@@ -561,18 +643,82 @@
             `;
         };
 
-        // Render loading skeletons immediately
-        document.getElementById("result").innerHTML = `
-            <div class="grid">
-                ${createCitySkeletonHtml("Nantes")}
-                ${createCitySkeletonHtml("Paris")}
-                ${createCitySkeletonHtml("Strasbourg")}
-                ${createCitySkeletonHtml("Marseille")}
-            </div>
-        `;
-        applyFocus();
+        const POLLEN_API_URL = "https://h987gq9iyg.execute-api.eu-north-1.amazonaws.com/pollen-etape/get-pollen";
+        const COMMUNES_API_URL = "https://geo.api.gouv.fr/communes";
+        const DEFAULT_CITIES = [
+            { code: "44109", name: "Nantes", todayKey: "date_du_jour_nantes", tomorrowKey: "date_du_lendemain_nantes" },
+            { code: "75056", name: "Paris", todayKey: "date_du_jour_paris", tomorrowKey: "date_du_lendemain_paris" },
+            { code: "67482", name: "Strasbourg", todayKey: "date_du_jour_strasbourg", tomorrowKey: "date_du_lendemain_strasbourg" },
+            { code: "13055", name: "Marseille", todayKey: "date_du_jour_marseille", tomorrowKey: "date_du_lendemain_marseille" }
+        ];
+        let searchTimeout;
+        let defaultPollenData;
+        let additionalCity;
+        let additionalPollenData;
 
-        fetch("https://h987gq9iyg.execute-api.eu-north-1.amazonaws.com/pollen-etape/get-pollen")
+        const escapeHtml = (value) => String(value).replace(/[&<>'"]/g, char => ({
+            "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#039;", '"': "&quot;"
+        })[char]);
+
+        const getAdditionalCity = () => {
+            const params = new URLSearchParams(window.location.search);
+            const code = params.get("code");
+            const name = params.get("ville");
+            return /^\d{5}$/.test(code || "") && name ? { code, name } : null;
+        };
+
+        const renderPollen = () => {
+            const baseCards = defaultPollenData
+                ? DEFAULT_CITIES.map(city => createCityHtml(city.name, city.todayKey, city.tomorrowKey, defaultPollenData)).join("")
+                : DEFAULT_CITIES.map(city => createCitySkeletonHtml(city.name)).join("");
+            const additionalCard = additionalCity
+                ? (additionalPollenData
+                    ? createCityHtml(escapeHtml(additionalCity.name), "today", "tomorrow", additionalPollenData)
+                    : createCitySkeletonHtml(escapeHtml(additionalCity.name)))
+                : "";
+            document.getElementById("result").innerHTML = `<div class="grid">${baseCards}${additionalCard}</div>`;
+            applyFocus();
+        };
+
+        const showSuggestions = (cities) => {
+            const suggestions = document.getElementById("city-suggestions");
+            suggestions.innerHTML = cities.map(city => `
+                <button type="button" data-code="${city.code}" data-name="${escapeHtml(city.nom)}">
+                    ${escapeHtml(city.nom)}${city.codeDepartement ? ` (${escapeHtml(city.codeDepartement)})` : ""}
+                </button>
+            `).join("");
+        };
+
+        const searchCities = (query) => {
+            if (query.trim().length < 2) {
+                showSuggestions([]);
+                return;
+            }
+            fetch(`${COMMUNES_API_URL}?nom=${encodeURIComponent(query.trim())}&fields=nom,code,codeDepartement,population&boost=population&limit=6`)
+                .then(response => response.ok ? response.json() : Promise.reject(new Error("Recherche de ville indisponible")))
+                .then(showSuggestions)
+                .catch(() => showSuggestions([]));
+        };
+
+        const selectCity = (city) => {
+            const params = new URLSearchParams(window.location.search);
+            params.set("code", city.code);
+            params.set("ville", city.name);
+            params.delete("focus");
+            window.history.pushState({}, "", `${window.location.pathname}?${params.toString()}${window.location.hash}`);
+            document.getElementById("city-search").value = city.name;
+            showSuggestions([]);
+            additionalCity = DEFAULT_CITIES.some(defaultCity => defaultCity.code === city.code) ? null : city;
+            additionalPollenData = undefined;
+            renderPollen();
+            if (additionalCity) loadAdditionalPollen(additionalCity);
+        };
+
+        const loadDefaultPollen = () => {
+            const errorEl = document.getElementById("error");
+            errorEl.style.display = "none";
+            renderPollen();
+            fetch(POLLEN_API_URL)
             .then(r => {
                 if (!r.ok) {
                     throw new Error("Erreur lors du chargement des données (" + r.status + ")");
@@ -580,26 +726,58 @@
                 return r.json();
             })
             .then(data => {
-                const result = document.getElementById("result");
-
-                const html = `
-                    <div class="grid">
-                        ${createCityHtml("Nantes", "date_du_jour_nantes", "date_du_lendemain_nantes", data)}
-                        ${createCityHtml("Paris", "date_du_jour_paris", "date_du_lendemain_paris", data)}
-                        ${createCityHtml("Strasbourg", "date_du_jour_strasbourg", "date_du_lendemain_strasbourg", data)}
-                        ${createCityHtml("Marseille", "date_du_jour_marseille", "date_du_lendemain_marseille", data)}
-                    </div>
-                `;
-
-                result.innerHTML = html;
-                applyFocus();
+                defaultPollenData = data;
+                renderPollen();
             })
             .catch(err => {
                 const errorEl = document.getElementById("error");
                 errorEl.style.display = "block";
                 errorEl.innerText = err.message || "Impossible de charger les données.";
-                document.getElementById("result").innerHTML = "";
             });
+        };
+
+        const loadAdditionalPollen = (city) => {
+            fetch(`${POLLEN_API_URL}?code_zone=${encodeURIComponent(city.code)}`)
+                .then(r => {
+                    if (!r.ok) throw new Error("Erreur lors du chargement des données (" + r.status + ")");
+                    return r.json();
+                })
+                .then(data => {
+                    if (additionalCity && additionalCity.code === city.code) {
+                        additionalPollenData = data;
+                        renderPollen();
+                    }
+                })
+                .catch(err => {
+                    const errorEl = document.getElementById("error");
+                    errorEl.style.display = "block";
+                    errorEl.innerText = err.message || "Impossible de charger les données de cette ville.";
+                    additionalCity = undefined;
+                    renderPollen();
+                });
+        };
+
+        document.getElementById("city-search").addEventListener("input", event => {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => searchCities(event.target.value), 250);
+        });
+
+        document.getElementById("city-picker").addEventListener("submit", event => {
+            event.preventDefault();
+            searchCities(document.getElementById("city-search").value);
+        });
+
+        document.getElementById("city-suggestions").addEventListener("click", event => {
+            const button = event.target.closest("button[data-code]");
+            if (button) selectCity({ code: button.dataset.code, name: button.dataset.name });
+        });
+
+        const initialCity = getAdditionalCity();
+        additionalCity = initialCity && !DEFAULT_CITIES.some(city => city.code === initialCity.code) ? initialCity : null;
+        if (initialCity) document.getElementById("city-search").value = initialCity.name;
+        renderPollen();
+        loadDefaultPollen();
+        if (additionalCity) loadAdditionalPollen(additionalCity);
     </script>
     <script src="tune.js"></script>
     <script src="bingo/bingo.js"></script>
