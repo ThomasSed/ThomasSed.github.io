@@ -231,32 +231,7 @@
         }
 
         .table-section-title td {
-            border-top: 8px solid #f8f9fa;
             font-weight: 700;
-        }
-
-        .air-details td {
-            padding-top: 12px;
-            padding-bottom: 12px;
-            background: #f8f9fa;
-            color: #3c4043;
-            font-size: 13px;
-        }
-
-        .air-details-list {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px 24px;
-        }
-
-        .air-details strong {
-            color: #5f6368;
-            font-weight: 500;
-            margin-right: 5px;
-        }
-
-        .air-column-heading th {
-            background: #f8f9fa;
         }
 
         .index-legend {
@@ -675,33 +650,21 @@
             `;
         };
 
-        const createAirQualityRows = (airData, formatDate) => {
+        const createAirQualityRows = (airData) => {
             const today = airData.today || {};
             const tomorrow = airData.tomorrow || {};
-            const details = today._details || {};
             const pollutants = ["PM2,5", "PM10", "NO₂", "O₃", "SO₂"];
 
             return `
                 <tr class="table-section-title">
                     <td colspan="4">Qualité de l'air</td>
                 </tr>
-                <tr class="air-details">
-                    <td colspan="4">
-                        <div class="air-details-list">
-                            <span><strong>Air — mis à jour le</strong>${formatDate(details["date de mise à jour"])}</span>
-                        </div>
-                    </td>
-                </tr>
-                <tr class="air-column-heading">
-                    <th colspan="2">Polluant</th>
-                    <th>Aujourd'hui</th>
-                    <th>Demain</th>
-                </tr>
                 ${pollutants.map(pollutant => `
                     <tr>
-                        <td colspan="2" class="allergen-name">${pollutant}</td>
+                        <td class="allergen-name">${pollutant}</td>
                         <td>${today[pollutant] === undefined ? "-" : `<span class="${levelClass(today[pollutant])}">${today[pollutant]}</span>`}</td>
                         <td>${tomorrow[pollutant] === undefined ? "-" : `<span class="${levelClass(tomorrow[pollutant])}">${tomorrow[pollutant]}</span>`}</td>
+                        <td></td>
                     </tr>
                 `).join("")}
             `;
@@ -712,6 +675,7 @@
             const today = data[todayKey] || {};
             const tomorrow = data[tomorrowKey] || {};
             const details = today._details || {};
+            const airDetails = airData?.today?._details || {};
             const concentrations = details.concentrations || {};
 
             const allergenKeys = Object.keys(today).filter(k => k !== "qualité globale" && !k.startsWith("_"));
@@ -738,7 +702,7 @@
             const detailHtml = Object.keys(details).length ? `
                 <div class="city-details">
                     <div><strong>Alerte</strong><span class="${details.alerte ? "alert-chip" : ""}">${details.alerte ? "Alerte en cours" : "Aucune alerte"}</span></div>
-                    <div><strong>Pollen — mis à jour le</strong>${formatDate(details["date de mise à jour"])}</div>
+                    <div><strong>Mis à jour le</strong><div>Pollen : ${formatDate(details["date de mise à jour"])}</div><div>Air : ${formatDate(airDetails["date de mise à jour"])}</div></div>
                     <div><strong>Date de diffusion</strong>${formatDate(details["date de diffusion"])}</div>
                     <div><strong>Source</strong>${details.source || "-"}</div>
                 </div>
@@ -782,7 +746,7 @@
                                         </td>
                                     </tr>
                                 `}
-                                ${createAirQualityRows(airData || {}, formatDate)}
+                                ${createAirQualityRows(airData || {})}
                             </tbody>
                         </table>
                     </div>
