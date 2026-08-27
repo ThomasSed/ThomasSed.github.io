@@ -231,30 +231,8 @@
         }
 
         .table-section-title td {
-            padding-top: 18px;
-            padding-bottom: 18px;
             border-top: 8px solid #f8f9fa;
-            background: #fff;
-            font-family: 'Google Sans', sans-serif;
-            font-size: 17px;
             font-weight: 700;
-        }
-
-        .table-section-title-content {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 12px;
-        }
-
-        .table-section-title-label {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .table-section-title .material-symbols-outlined {
-            color: #1a73e8;
         }
 
         .air-details td {
@@ -282,7 +260,6 @@
         }
 
         .index-legend {
-            margin: 14px 20px;
             color: #5f6368;
             font-size: 12px;
         }
@@ -295,6 +272,18 @@
         .index-legend p {
             margin: 8px 0 0;
             line-height: 1.5;
+        }
+
+        .city-picker-heading {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 10px;
+        }
+
+        .city-picker-heading label {
+            margin-bottom: 0;
         }
 
         .allergen-name {
@@ -516,7 +505,14 @@
     <div id="pollen-app" class="app-container active">
         <div id="container">
             <form class="city-picker" id="city-picker">
-                <label for="city-search">Choisir une ville</label>
+                <div class="city-picker-heading">
+                    <label for="city-search">Choisir une ville</label>
+                    <details class="index-legend">
+                        <summary>Échelle des indices</summary>
+                        <p><strong>Pollen :</strong> 1 très faible, 2 faible, 3 modéré, 4 élevé, 5 très élevé, 6 extrêmement élevé.</p>
+                        <p><strong>Qualité de l'air :</strong> 1 bon, 2 moyen, 3 dégradé, 4 mauvais, 5 très mauvais, 6 extrêmement mauvais.</p>
+                    </details>
+                </div>
                 <div class="city-search-row">
                     <input id="city-search" type="search" autocomplete="off" placeholder="Ex. Lyon, Rennes, Bordeaux" aria-describedby="city-search-help">
                     <button type="submit">Rechercher</button>
@@ -684,25 +680,15 @@
             const tomorrow = airData.tomorrow || {};
             const details = today._details || {};
             const pollutants = ["PM2,5", "PM10", "NO₂", "O₃", "SO₂"];
-            const globalLevel = today["qualité globale"];
-            const globalHtml = globalLevel !== undefined
-                ? `<span class="${levelClass(globalLevel)}">${details["qualité"] || "Indice"}</span>`
-                : `<span class="empty-dash">-</span>`;
 
             return `
                 <tr class="table-section-title">
-                    <td colspan="4">
-                        <div class="table-section-title-content">
-                            <span class="table-section-title-label"><span class="material-symbols-outlined">air</span>Qualité de l'air</span>
-                            ${globalHtml}
-                        </div>
-                    </td>
+                    <td colspan="4">Qualité de l'air</td>
                 </tr>
                 <tr class="air-details">
                     <td colspan="4">
                         <div class="air-details-list">
-                            <span><strong>Source</strong>${details.source || "-"}</span>
-                            <span><strong>Mis à jour le</strong>${formatDate(details["date de mise à jour"])}</span>
+                            <span><strong>Air — mis à jour le</strong>${formatDate(details["date de mise à jour"])}</span>
                         </div>
                     </td>
                 </tr>
@@ -752,7 +738,7 @@
             const detailHtml = Object.keys(details).length ? `
                 <div class="city-details">
                     <div><strong>Alerte</strong><span class="${details.alerte ? "alert-chip" : ""}">${details.alerte ? "Alerte en cours" : "Aucune alerte"}</span></div>
-                    <div><strong>Mis à jour le</strong>${formatDate(details["date de mise à jour"])}</div>
+                    <div><strong>Pollen — mis à jour le</strong>${formatDate(details["date de mise à jour"])}</div>
                     <div><strong>Date de diffusion</strong>${formatDate(details["date de diffusion"])}</div>
                     <div><strong>Source</strong>${details.source || "-"}</div>
                 </div>
@@ -800,11 +786,6 @@
                             </tbody>
                         </table>
                     </div>
-                    <details class="index-legend">
-                        <summary>Comprendre les niveaux</summary>
-                        <p><strong>Pollen :</strong> 1 très faible, 2 faible, 3 modéré, 4 élevé, 5 très élevé, 6 extrêmement élevé.</p>
-                        <p><strong>Qualité de l'air :</strong> 1 bon, 2 moyen, 3 dégradé, 4 mauvais, 5 très mauvais, 6 extrêmement mauvais.</p>
-                    </details>
                 </div>
             `;
         };
