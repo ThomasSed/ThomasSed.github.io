@@ -847,7 +847,7 @@
                     ? createCityHtml(escapeHtml(additionalCity.name), "today", "tomorrow", additionalPollenData, additionalAirData)
                     : createCitySkeletonHtml(escapeHtml(additionalCity.name)))
                 : "";
-            document.getElementById("result").innerHTML = `<div class="grid">${baseCards}${additionalCard}</div>`;
+            document.getElementById("result").innerHTML = `<div class="grid">${additionalCard}${baseCards}</div>`;
             applyFocus();
         };
 
@@ -875,11 +875,16 @@
             const params = new URLSearchParams(window.location.search);
             params.set("code", city.code);
             params.set("ville", city.name);
-            params.delete("focus");
+            const isDefaultCity = DEFAULT_CITIES.some(defaultCity => defaultCity.code === city.code);
+            if (isDefaultCity) {
+                params.delete("focus");
+            } else {
+                params.set("focus", city.name.toLowerCase());
+            }
             window.history.pushState({}, "", `${window.location.pathname}?${params.toString()}${window.location.hash}`);
             document.getElementById("city-search").value = city.name;
             showSuggestions([]);
-            additionalCity = DEFAULT_CITIES.some(defaultCity => defaultCity.code === city.code) ? null : city;
+            additionalCity = isDefaultCity ? null : city;
             additionalPollenData = undefined;
             additionalAirData = undefined;
             renderPollen();
@@ -953,6 +958,13 @@
 
         const initialCity = getAdditionalCity();
         additionalCity = initialCity && !DEFAULT_CITIES.some(city => city.code === initialCity.code) ? initialCity : null;
+        if (additionalCity) {
+            const params = new URLSearchParams(window.location.search);
+            if (!params.has("focus")) {
+                params.set("focus", additionalCity.name.toLowerCase());
+                window.history.replaceState({}, "", `${window.location.pathname}?${params.toString()}${window.location.hash}`);
+            }
+        }
         if (initialCity) document.getElementById("city-search").value = initialCity.name;
         renderPollen();
         loadDefaultPollen();
