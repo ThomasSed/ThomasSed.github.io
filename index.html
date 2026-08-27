@@ -207,32 +207,6 @@
             overflow-x: auto;
         }
 
-        .air-quality {
-            border-top: 8px solid #f8f9fa;
-        }
-
-        .air-quality-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 12px;
-            padding: 16px 20px;
-            border-bottom: 1px solid #f1f3f4;
-        }
-
-        .air-quality-title {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-family: 'Google Sans', sans-serif;
-            font-size: 17px;
-            font-weight: 500;
-        }
-
-        .air-quality-title .material-symbols-outlined {
-            color: #1a73e8;
-        }
-
         table {
             width: 100%;
             border-collapse: collapse;
@@ -254,6 +228,73 @@
 
         tr:last-child td {
             border-bottom: none;
+        }
+
+        .table-section-title td {
+            padding-top: 18px;
+            padding-bottom: 18px;
+            border-top: 8px solid #f8f9fa;
+            background: #fff;
+            font-family: 'Google Sans', sans-serif;
+            font-size: 17px;
+            font-weight: 700;
+        }
+
+        .table-section-title-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .table-section-title-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .table-section-title .material-symbols-outlined {
+            color: #1a73e8;
+        }
+
+        .air-details td {
+            padding-top: 12px;
+            padding-bottom: 12px;
+            background: #f8f9fa;
+            color: #3c4043;
+            font-size: 13px;
+        }
+
+        .air-details-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px 24px;
+        }
+
+        .air-details strong {
+            color: #5f6368;
+            font-weight: 500;
+            margin-right: 5px;
+        }
+
+        .air-column-heading th {
+            background: #f8f9fa;
+        }
+
+        .index-legend {
+            margin: 14px 20px;
+            color: #5f6368;
+            font-size: 12px;
+        }
+
+        .index-legend summary {
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        .index-legend p {
+            margin: 8px 0 0;
+            line-height: 1.5;
         }
 
         .allergen-name {
@@ -638,51 +679,45 @@
             `;
         };
 
-        const createAirQualityHtml = (airData) => {
+        const createAirQualityRows = (airData, formatDate) => {
             const today = airData.today || {};
             const tomorrow = airData.tomorrow || {};
             const details = today._details || {};
             const pollutants = ["PM2,5", "PM10", "NO₂", "O₃", "SO₂"];
             const globalLevel = today["qualité globale"];
             const globalHtml = globalLevel !== undefined
-                ? `<span class="${levelClass(globalLevel)}">${details["qualité"] || `Niveau ${globalLevel}`}</span>`
+                ? `<span class="${levelClass(globalLevel)}">${details["qualité"] || "Indice"}</span>`
                 : `<span class="empty-dash">-</span>`;
 
             return `
-                <section class="air-quality" aria-label="Qualité de l'air">
-                    <div class="air-quality-header">
-                        <div class="air-quality-title">
-                            <span class="material-symbols-outlined">air</span>
-                            Qualité de l'air
+                <tr class="table-section-title">
+                    <td colspan="4">
+                        <div class="table-section-title-content">
+                            <span class="table-section-title-label"><span class="material-symbols-outlined">air</span>Qualité de l'air</span>
+                            ${globalHtml}
                         </div>
-                        ${globalHtml}
-                    </div>
-                    <div class="city-details">
-                        <div><strong>Source</strong>${details.source || "-"}</div>
-                        <div><strong>Mis à jour le</strong>${details["date de mise à jour"] || "-"}</div>
-                        <div><strong>Prévision pour le</strong>${details["date d'échéance"] || "-"}</div>
-                    </div>
-                    <div class="table-container">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Polluant</th>
-                                    <th>Aujourd'hui</th>
-                                    <th>Demain</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${pollutants.map(pollutant => `
-                                    <tr>
-                                        <td class="allergen-name">${pollutant}</td>
-                                        <td>${today[pollutant] === undefined ? "-" : `<span class="${levelClass(today[pollutant])}">Niveau ${today[pollutant]}</span>`}</td>
-                                        <td>${tomorrow[pollutant] === undefined ? "-" : `<span class="${levelClass(tomorrow[pollutant])}">Niveau ${tomorrow[pollutant]}</span>`}</td>
-                                    </tr>
-                                `).join("")}
-                            </tbody>
-                        </table>
-                    </div>
-                </section>
+                    </td>
+                </tr>
+                <tr class="air-details">
+                    <td colspan="4">
+                        <div class="air-details-list">
+                            <span><strong>Source</strong>${details.source || "-"}</span>
+                            <span><strong>Mis à jour le</strong>${formatDate(details["date de mise à jour"])}</span>
+                        </div>
+                    </td>
+                </tr>
+                <tr class="air-column-heading">
+                    <th colspan="2">Polluant</th>
+                    <th>Aujourd'hui</th>
+                    <th>Demain</th>
+                </tr>
+                ${pollutants.map(pollutant => `
+                    <tr>
+                        <td colspan="2" class="allergen-name">${pollutant}</td>
+                        <td>${today[pollutant] === undefined ? "-" : `<span class="${levelClass(today[pollutant])}">${today[pollutant]}</span>`}</td>
+                        <td>${tomorrow[pollutant] === undefined ? "-" : `<span class="${levelClass(tomorrow[pollutant])}">${tomorrow[pollutant]}</span>`}</td>
+                    </tr>
+                `).join("")}
             `;
         };
 
@@ -708,7 +743,7 @@
 
             const globalToday = today["qualité globale"];
             const globalHtml = globalToday
-                ? `<div class="${levelClass(globalToday)}">Niveau ${globalToday}</div>`
+                ? `<div class="${levelClass(globalToday)}">${details["qualité"] || "Indice"}</div>`
                 : `<div class="empty-dash">-</div>`;
 
             const formatDate = (value) => value
@@ -716,12 +751,9 @@
                 : "-";
             const detailHtml = Object.keys(details).length ? `
                 <div class="city-details">
-                    <div><strong>Qualité de l'air</strong>${details["qualité"] || "-"}</div>
                     <div><strong>Alerte</strong><span class="${details.alerte ? "alert-chip" : ""}">${details.alerte ? "Alerte en cours" : "Aucune alerte"}</span></div>
                     <div><strong>Mis à jour le</strong>${formatDate(details["date de mise à jour"])}</div>
                     <div><strong>Date de diffusion</strong>${formatDate(details["date de diffusion"])}</div>
-                    <div><strong>Prévision pour le</strong>${formatDate(details["date d'échéance"])}</div>
-                    <div><strong>Pollens responsables</strong>${details["pollens responsables"] || "-"}</div>
                     <div><strong>Source</strong>${details.source || "-"}</div>
                 </div>
             ` : "";
@@ -764,10 +796,15 @@
                                         </td>
                                     </tr>
                                 `}
+                                ${createAirQualityRows(airData || {}, formatDate)}
                             </tbody>
                         </table>
                     </div>
-                    ${createAirQualityHtml(airData || {})}
+                    <details class="index-legend">
+                        <summary>Comprendre les niveaux</summary>
+                        <p><strong>Pollen :</strong> 1 très faible, 2 faible, 3 modéré, 4 élevé, 5 très élevé, 6 extrêmement élevé.</p>
+                        <p><strong>Qualité de l'air :</strong> 1 bon, 2 moyen, 3 dégradé, 4 mauvais, 5 très mauvais, 6 extrêmement mauvais.</p>
+                    </details>
                 </div>
             `;
         };
