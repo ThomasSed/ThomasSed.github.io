@@ -1,0 +1,32 @@
+[
+  {
+    "date": "2026-03-18",
+    "cities": {
+      "Nantes": { "aulne": 2, "bouleau": 2, "olivier": 1, "graminées": 2, "armoise": 1, "ambroisie": 1 },
+      "Paris": { "aulne": 2, "bouleau": 2, "olivier": 1, "graminées": 2, "armoise": 1, "ambroisie": 1 }
+    }
+  },
+  {
+    "date": "2026-03-20",
+    "cities": {
+      "Nantes": { "aulne": 2, "bouleau": 2, "olivier": 1, "graminées": 2, "armoise": 1, "ambroisie": 1 },
+      "Paris": { "aulne": 2, "bouleau": 2, "olivier": 1, "graminées": 2, "armoise": 1, "ambroisie": 1 }
+    }
+  },
+  {
+    "date": "2026-03-21",
+    "cities": {
+      "Nantes": { "aulne": 2, "bouleau": 2, "olivier": 1, "graminées": 2, "armoise": 1, "ambroisie": 1 },
+      "Paris": { "aulne": 2, "bouleau": 3, "olivier": 1, "graminées": 2, "armoise": 1, "ambroisie": 1 }
+    }
+  },
+  {
+    "date": "2026-08-08",
+    "cities": {
+      "Marseille": { "aulne": 1, "bouleau": 1, "olivier": 1, "graminées": 2, "armoise": 1, "ambroisie": 1 },
+      "Nantes": { "aulne": 1, "bouleau": 1, "olivier": 1, "graminées": 2, "armoise": 2, "ambroisie": 1 },
+      "Paris": { "aulne": 1, "bouleau": 1, "olivier": 1, "graminées": 2, "armoise": 2, "ambroisie": 1 },
+      "Strasbourg": { "aulne": 1, "bouleau": 1, "olivier": 1, "graminées": 2, "armoise": 2, "ambroisie": 1 }
+    }
+  }
+]

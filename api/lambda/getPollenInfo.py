@@ -18,6 +18,16 @@ DEFAULT_CITIES = {
     "strasbourg": "67482",
     "marseille": "13055",
 }
+CITY_NAMES = {
+    "paris": "Paris",
+    "nantes": "Nantes",
+    "strasbourg": "Strasbourg",
+    "marseille": "Marseille",
+}
+POLLEN_HISTORY_KEY = "pollen-history.json"
+DAILY_CACHE_PATTERN = re.compile(
+    r"^atmo_(?:environment|pollen)_extracted_(\d{4})_(\d{2})_(\d{2})(?:_\d{5})?\.json$"
+)
 
 s3 = boto3.client("s3")
 bucket_name = "thomassed-repo-pollen"
@@ -151,6 +161,68 @@ def save_cached_data(cache_key, data):
     s3.put_object(Bucket=bucket_name, Key=cache_key, Body=json.dumps(data))
 
 
+def pollen_history_entry(day, data):
+    """Return the compact chart format from either a current or legacy cache file."""
+    pollen_data = data.get("pollen", data)
+    cities = {}
+    for city_key, city_name in CITY_NAMES.items():
+        pollen_values = pollen_data.get(f"date_du_jour_{city_key}", {})
+        if not pollen_values:
+            continue
+        values = {
+            pollen: pollen_values[pollen]
+            for pollen in codesPolluantsTranslationMapping.values()
+            if pollen != "qualité globale" and pollen in pollen_values
+        }
+        if values:
+            cities[city_name] = values
+    return {"date": day, "cities": cities} if cities else None
+
+
+def existing_history_entries():
+    """Rebuild an initial history from daily cache files when no aggregate exists yet."""
+    entries = {}
+    paginator = s3.get_paginator("list_objects_v2")
+    for page in paginator.paginate(Bucket=bucket_name):
+        for item in page.get("Contents", []):
+            match = DAILY_CACHE_PATTERN.fullmatch(item["Key"])
+            if not match:
+                continue
+            day = "-".join(match.groups()[:3])
+            cached_data = get_cached_data(item["Key"])
+            entry = pollen_history_entry(day, cached_data)
+            if entry:
+                entries[day] = entry
+    return entries
+
+
+def get_pollen_history():
+    """Read the chart history, returning an empty list before its first creation."""
+    history = get_cached_data(POLLEN_HISTORY_KEY)
+    return history if isinstance(history, list) else []
+
+
+def create_history(today, fresh_data):
+    """Create or replace the aggregate history after the first default request of a day."""
+    existing_history = get_pollen_history()
+    entries = (
+        {entry["date"]: entry for entry in existing_history if isinstance(entry, dict) and entry.get("date")}
+        if existing_history
+        else existing_history_entries()
+    )
+    today_entry = pollen_history_entry(today.strftime("%Y-%m-%d"), fresh_data)
+    if today_entry:
+        entries[today_entry["date"]] = today_entry
+    history = [entries[day] for day in sorted(entries)]
+    save_cached_data(POLLEN_HISTORY_KEY, history)
+    return history
+
+
+def with_history(data, history):
+    """Keep pollen, air and history in one API response without mutating the daily cache."""
+    return {**data, "history": history}
+
+
 def lambda_handler(event, context):
     params = event.get("queryStringParameters") or {}
     code_zone = params.get("code_zone")
@@ -169,7 +241,9 @@ def lambda_handler(event, context):
     cached_data = get_cached_data(cache_key)
     if cached_data is not None:
         print("Using cached data")
-        return response(200, cached_data)
+        # This also repairs an old daily cache created before history support existed.
+        history = create_history(today, cached_data) if not code_zone and not get_pollen_history() else get_pollen_history()
+        return response(200, with_history(cached_data, history))
 
     try:
         token = get_atmo_token()
@@ -215,7 +289,9 @@ def lambda_handler(event, context):
                     data_type, key = futures[future]
                     fresh_data[data_type][key] = future.result()
         save_cached_data(cache_key, fresh_data)
-        return response(200, fresh_data)
+        # Only the default-city request defines the daily historical snapshot.
+        history = create_history(today, fresh_data) if not code_zone else get_pollen_history()
+        return response(200, with_history(fresh_data, history))
     except Exception as error:
         print(f"Failed to fetch pollen data: {error}")
         return response(500, {"error": "Failed to fetch data from Atmo API"})
