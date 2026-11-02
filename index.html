@@ -425,11 +425,6 @@
             stroke-width: 2.5;
         }
 
-        .history-chart .series-point {
-            stroke: #fff;
-            stroke-width: 1.5;
-        }
-
         .history-legend {
             display: flex;
             flex-wrap: wrap;
@@ -923,19 +918,47 @@
             "armoise": "#d93025",
             "ambroisie": "#00838f"
         };
-        const POLLEN_LINE_STYLES = {
-            "aulne": "",
-            "bouleau": "8 4",
-            "olivier": "2 3",
-            "graminées": "10 3 2 3",
-            "armoise": "5 3",
-            "ambroisie": "1 3"
-        };
-
         const toHistoryDate = (date) => new Date(`${date}T12:00:00`);
-        const formatHistoryDate = (date) => new Intl.DateTimeFormat("fr-FR", { day: "2-digit", month: "short" })
-            .format(toHistoryDate(date));
         const formatQuarterDate = (date) => new Intl.DateTimeFormat("fr-FR", { month: "short", year: "numeric" }).format(date);
+
+        const loess = (observations, bandwidth = 0.35, sampleCount = 96) => {
+            if (observations.length < 3) return observations;
+
+            const sorted = [...observations].sort((a, b) => a.x - b.x);
+            const neighbours = Math.max(3, Math.ceil(sorted.length * bandwidth));
+            const firstX = sorted[0].x;
+            const lastX = sorted[sorted.length - 1].x;
+
+            return Array.from({ length: sampleCount }, (_, index) => {
+                const x = firstX + ((lastX - firstX) * index / (sampleCount - 1));
+                const byDistance = sorted.map(point => ({ ...point, distance: Math.abs(point.x - x) }))
+                    .sort((a, b) => a.distance - b.distance)
+                    .slice(0, neighbours);
+                const furthestDistance = byDistance[byDistance.length - 1].distance || 1;
+                let weightSum = 0;
+                let weightedX = 0;
+                let weightedY = 0;
+                let weightedXX = 0;
+                let weightedXY = 0;
+
+                byDistance.forEach(point => {
+                    const ratio = point.distance / furthestDistance;
+                    const weight = (1 - ratio ** 3) ** 3;
+                    const relativeX = point.x - x;
+                    weightSum += weight;
+                    weightedX += weight * relativeX;
+                    weightedY += weight * point.y;
+                    weightedXX += weight * relativeX * relativeX;
+                    weightedXY += weight * relativeX * point.y;
+                });
+
+                const denominator = weightSum * weightedXX - weightedX ** 2;
+                const y = denominator
+                    ? (weightedY * weightedXX - weightedX * weightedXY) / denominator
+                    : weightedY / weightSum;
+                return { x, y: Math.max(0, Math.min(100, y)) };
+            });
+        };
 
         const renderHistoryChart = () => {
             const citySelect = document.getElementById("history-city");
@@ -970,13 +993,18 @@
                 pollen,
                 values: displayedHistory.map(entry => ({ date: entry.date, value: entry.cities?.[city]?.[pollen] }))
             })).filter(item => item.values.some(point => Number.isFinite(point.value))).map(item => {
-                const maximum = Math.max(...item.values.map(point => point.value).filter(Number.isFinite));
+                const observedValues = item.values.map(point => point.value).filter(Number.isFinite);
+                const minimum = Math.min(...observedValues);
+                const maximum = Math.max(...observedValues);
                 return {
                     ...item,
+                    minimum,
                     maximum,
                     values: item.values.map(point => ({
                         ...point,
-                        percent: Number.isFinite(point.value) ? (maximum ? (point.value / maximum) * 100 : 0) : null
+                        percent: Number.isFinite(point.value) && maximum !== minimum
+                            ? ((point.value - minimum) / (maximum - minimum)) * 100
+                            : 0
                     }))
                 };
             });
@@ -994,6 +1022,7 @@
             const yEnd = chartHeight - margins.bottom;
             const duration = today.getTime() - yearAgo.getTime();
             const xFor = date => xStart + ((toHistoryDate(date).getTime() - yearAgo.getTime()) / duration) * (xEnd - xStart);
+            const xForTimestamp = timestamp => xStart + ((timestamp - yearAgo.getTime()) / duration) * (xEnd - xStart);
             const yFor = percent => yEnd - (percent / 100) * (yEnd - yStart);
             const gridValues = [0, 50, 100];
             const grid = gridValues.map(value => {
@@ -1005,19 +1034,17 @@
             const quarterTicks = [];
             for (let tick = new Date(firstQuarter); tick <= today; tick.setMonth(tick.getMonth() + 3)) quarterTicks.push(new Date(tick));
             const dateLabels = quarterTicks.map(tick => `<text class="date-label" text-anchor="middle" x="${xStart + ((tick.getTime() - yearAgo.getTime()) / duration) * (xEnd - xStart)}" y="${chartHeight - 12}">${formatQuarterDate(tick)}</text>`).join("");
-            const lines = series.map(({ pollen, values }, seriesIndex) => {
-                // A small horizontal offset keeps equal values legible without changing their intensity.
-                const offset = (seriesIndex - (series.length - 1) / 2) * 4;
-                const points = values.map(point => Number.isFinite(point.percent) ? `${xFor(point.date) + offset},${yFor(point.percent)}` : null).filter(Boolean).join(" ");
-                const circles = values.map(point => Number.isFinite(point.percent)
-                    ? `<circle class="series-point" cx="${xFor(point.date) + offset}" cy="${yFor(point.percent)}" r="3.5" fill="${POLLEN_COLORS[pollen]}"><title>${formatHistoryDate(point.date)} : indice ${point.value} (${point.percent.toFixed(0)} %)</title></circle>`
-                    : "").join("");
-                const dash = POLLEN_LINE_STYLES[pollen] ? ` stroke-dasharray="${POLLEN_LINE_STYLES[pollen]}"` : "";
-                return `<polyline class="series-line" points="${points}" stroke="${POLLEN_COLORS[pollen]}"${dash}></polyline>${circles}`;
+            const lines = series.map(({ pollen, values }) => {
+                const observations = values.filter(point => Number.isFinite(point.percent)).map(point => ({
+                    x: toHistoryDate(point.date).getTime(),
+                    y: point.percent
+                }));
+                const points = loess(observations).map(point => `${xForTimestamp(point.x)},${yFor(point.y)}`).join(" ");
+                return `<polyline class="series-line" points="${points}" stroke="${POLLEN_COLORS[pollen]}"></polyline>`;
             }).join("");
-            const legend = series.map(({ pollen, maximum }) => {
+            const legend = series.map(({ pollen }) => {
                 const displayName = pollen.charAt(0).toUpperCase() + pollen.slice(1);
-                return `<li><i style="background: ${POLLEN_COLORS[pollen]};"></i>${displayName} (max. ${maximum})</li>`;
+                return `<li><i style="background: ${POLLEN_COLORS[pollen]};"></i>${displayName}</li>`;
             }).join("");
 
             chartArea.innerHTML = `<svg class="history-chart" viewBox="0 0 ${chartWidth} ${chartHeight}" role="img" aria-label="Historique des pollens à ${escapeHtml(city)}, intensité normalisée en pourcentage">
